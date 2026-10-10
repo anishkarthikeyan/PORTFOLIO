@@ -1,0 +1,223 @@
+.figure {
+  margin: 0;
+  display: grid;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  background:
+    linear-gradient(rgba(132, 155, 184, 0.04) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(90deg, rgba(132, 155, 184, 0.04) 1px, transparent 1px) 0 0 / 16px 16px,
+    var(--void-deep);
+  border: 1px solid var(--line);
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.captionTitle {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.scroller {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.flow {
+  display: flex;
+  align-items: stretch;
+  list-style: none;
+  min-width: min-content;
+}
+
+.stageWrap {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 0;
+  min-width: 150px;
+}
+
+.arrow {
+  display: flex;
+  align-items: center;
+  width: 28px;
+  flex: none;
+}
+.arrowLine {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--steel-dim);
+}
+.arrowLine::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: -4px;
+  border: 5px solid transparent;
+  border-left: 6px solid var(--steel);
+  border-right: 0;
+}
+
+.stage {
+  flex: 1;
+  display: grid;
+  align-content: start;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.stageLabel {
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+
+.nodes {
+  display: grid;
+  gap: var(--s-2);
+  list-style: none;
+}
+
+.node {
+  display: grid;
+  gap: 2px;
+  padding: var(--s-2) var(--s-3);
+  background: var(--graphite);
+  border: 1px solid var(--line-strong);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Shape cues per kind (not color-only) */
+.node[data-kind="store"],
+.node[data-kind="cache"] {
+  border-bottom-width: 4px;
+  border-radius: 0 0 8px 8px;
+}
+.node[data-kind="queue"] {
+  border-style: double;
+  border-width: 3px;
+}
+.node[data-kind="model"],
+.node[data-kind="eval"] {
+  border-left: 3px solid var(--steel);
+}
+.node[data-kind="client"],
+.node[data-kind="data"] {
+  border-style: dashed;
+}
+.node[data-kind="edge"] {
+  border-top: 3px solid var(--silver);
+}
+.node[data-kind="output"] {
+  border-right: 3px solid var(--steel);
+}
+
+.kind {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--steel);
+}
+
+.nodeLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.note {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+}
+
+.flows {
+  border-top: 1px dashed var(--line);
+  padding-top: var(--s-3);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.flowsTitle {
+  margin-bottom: var(--s-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.flows ol {
+  display: grid;
+  gap: 4px;
+  padding-left: 1.4rem;
+}
+
+/* Stack vertically on narrow screens */
+@media (max-width: 720px) {
+  .flow {
+    flex-direction: column;
+    min-width: 0;
+  }
+  .stageWrap {
+    flex-direction: column;
+    min-width: 0;
+  }
+  .arrow {
+    width: auto;
+    height: 26px;
+    justify-content: flex-start;
+    padding-left: 20px;
+  }
+  .arrowLine {
+    width: 2px;
+    height: 100%;
+  }
+  .arrowLine::after {
+    right: auto;
+    left: -4px;
+    top: auto;
+    bottom: -1px;
+    border: 5px solid transparent;
+    border-top: 6px solid var(--steel);
+    border-bottom: 0;
+  }
+}
+
+/* ---------- Compact strip (cards) ---------- */
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+.strip li {
+  display: inline-flex;
+  align-items: center;
+}
+.stripBox {
+  padding: 2px 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--void-deep);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.stripArrow {
+  padding: 0 4px;
+  color: var(--steel-dim);
+}
