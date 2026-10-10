@@ -181,3 +181,31 @@
     padding: var(--s-4);
   }
 }
+
+/* ---------- In-world: islands + level doors ---------- */
+
+.island + .island {
+  margin-top: var(--s-6);
+}
+
+.level {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: calc(-1 * var(--s-2)) 0 0;
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: #f2d27a;
+  text-transform: uppercase;
+}
+
+/* Pixel door icon */
+.door {
+  width: 10px;
+  height: 14px;
+  background:
+    linear-gradient(#75442f, #75442f) 2px 2px / 6px 12px no-repeat,
+    linear-gradient(#f2d27a, #f2d27a) 6px 8px / 1px 2px no-repeat,
+    #3a2015;
+  box-shadow: 0 0 0 1px #2b1a12;
+}

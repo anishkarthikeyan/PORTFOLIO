@@ -38,7 +38,7 @@ function solids(layout: BandLayout) {
 
 describe("hero sprite", () => {
   it("has every animation state at a fixed size", () => {
-    const required = ["idle", "blink", "walk1", "walk2", "walk3", "walk4", "run1", "run2", "run3", "run4", "jump", "fall", "land", "pipe", "celebrate"];
+    const required = ["idle", "blink", "walk1", "walk2", "walk3", "walk4", "run1", "run2", "run3", "run4", "jump", "fall", "land", "pipe", "celebrate", "climb1", "climb2", "wave"];
     for (const name of required) {
       const frame = HERO_FRAMES[name as keyof typeof HERO_FRAMES];
       expect(frame, name).toBeDefined();
@@ -129,8 +129,7 @@ describe.each(layouts)("route %s", (_name, layout) => {
   it("hides the character inside pipes before/after the route", () => {
     if (route.startsInPipe) expect(characterAt(route, layout, 0).visible).toBe(false);
     else expect(characterAt(route, layout, 0)).toMatchObject({ visible: true, frame: "idle" });
-    if (route.endsInPipe) expect(characterAt(route, layout, 1).visible).toBe(false);
-    else expect(characterAt(route, layout, 1)).toMatchObject({ visible: true, frame: "celebrate" });
+    expect(characterAt(route, layout, 1).visible).toBe(!route.endsInPipe);
   });
 
   it("clips the sprite while emerging and entering, never otherwise", () => {
@@ -154,11 +153,11 @@ describe.each(layouts)("route %s", (_name, layout) => {
 });
 
 describe("pipe transitions", () => {
-  it("every band except the last enters a pipe, every band except the first emerges", () => {
+  it("every band warps onward through a pipe; every band except the spawn emerges from one", () => {
     WORLD_BANDS.forEach((b, i) => {
       for (const layout of [b.wide, b.compact]) {
         const r = compileRoute(layout);
-        expect(r.endsInPipe, `${b.id} enters`).toBe(i < WORLD_BANDS.length - 1);
+        expect(r.endsInPipe, `${b.id} enters`).toBe(true);
         expect(r.startsInPipe, `${b.id} emerges`).toBe(i > 0);
       }
     });

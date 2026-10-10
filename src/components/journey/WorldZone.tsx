@@ -12,13 +12,14 @@ import styles from "./Journey.module.css";
  * On wide screens the JourneyController adds a ledge "lane" in the right
  * margin so the character descends alongside the content.
  */
-export function WorldZone({ world, children }: { world: string; children: React.ReactNode }) {
+export function WorldZone({ world, lane = false, children }: { world: string; lane?: boolean; children: React.ReactNode }) {
   const band = getBand(world);
   if (!band) return <>{children}</>;
   return (
     <div
       className={styles.zone}
       data-zone={band.id}
+      data-lane={lane || undefined}
       style={{ "--world-accent": band.accent } as React.CSSProperties}
     >
       <div className={styles.backdrop} aria-hidden="true">

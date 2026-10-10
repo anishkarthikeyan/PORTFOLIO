@@ -622,3 +622,324 @@
     gap: 2px;
   }
 }
+
+/* ==========================================================================
+   In-world presentation (journey)
+   ========================================================================== */
+
+.laneHost {
+  position: relative;
+}
+
+/* About: arcade "player select" frame */
+.arcade {
+  border: 3px solid #3a4454;
+  box-shadow:
+    inset 0 0 0 2px #0b0e12,
+    6px 6px 0 rgba(0, 0, 0, 0.45);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--graphite-2), var(--graphite));
+}
+.arcade::before,
+.arcade::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 3px solid #f2d27a;
+}
+.arcade::before {
+  top: -3px;
+  left: -3px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.arcade::after {
+  bottom: -3px;
+  right: -3px;
+  border-left: 0;
+  border-top: 0;
+}
+.statHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ready {
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: #f2d27a;
+  animation: blinkReady 1.2s steps(1) infinite;
+}
+@keyframes blinkReady {
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ready {
+    animation: none;
+  }
+}
+
+/* ---------- Skill tree (a real pixel tree) ---------- */
+
+.skillTree {
+  /* CSS px per art px — matches the journey pixel scale */
+  --px: calc(min(100vw, 1600px) / 360);
+  --trunk: calc(48 * var(--px));
+  position: relative;
+}
+
+.canopy {
+  height: calc(34 * var(--px));
+  margin-bottom: calc(-6 * var(--px));
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 34' shape-rendering='crispEdges'%3E%3Cg fill='%232f6b3a'%3E%3Crect x='30' y='4' width='36' height='8'/%3E%3Crect x='18' y='10' width='60' height='10'/%3E%3Crect x='8' y='18' width='80' height='10'/%3E%3Crect x='20' y='26' width='56' height='8'/%3E%3C/g%3E%3Cg fill='%233f8a4b'%3E%3Crect x='34' y='6' width='14' height='6'/%3E%3Crect x='22' y='14' width='18' height='6'/%3E%3Crect x='56' y='12' width='16' height='6'/%3E%3Crect x='12' y='22' width='20' height='4'/%3E%3Crect x='62' y='22' width='20' height='4'/%3E%3C/g%3E%3Cg fill='%2362b06a'%3E%3Crect x='38' y='6' width='4' height='2'/%3E%3Crect x='26' y='14' width='4' height='2'/%3E%3Crect x='60' y='12' width='4' height='2'/%3E%3C/g%3E%3Cg fill='%23a9bdd6'%3E%3Crect x='46' y='16' width='2' height='2'/%3E%3Crect x='30' y='24' width='2' height='2'/%3E%3Crect x='70' y='18' width='2' height='2'/%3E%3C/g%3E%3C/svg%3E")
+    center bottom / auto 100% no-repeat;
+}
+
+.treeBody {
+  position: relative;
+}
+
+.trunkCol {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - var(--trunk) / 2);
+  width: var(--trunk);
+}
+.trunkCol > * {
+  left: 0;
+  width: 100%;
+}
+
+.limbs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--trunk) minmax(0, 1fr);
+  row-gap: var(--s-5);
+  list-style: none;
+}
+
+.limb {
+  position: relative;
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  background: var(--graphite);
+  border: 1px solid var(--line);
+  border-top: 3px solid #3f8a4b;
+}
+.limb[data-side="right"] {
+  grid-column: 3;
+}
+.limb[data-side="left"] {
+  grid-column: 1;
+}
+/* Branch connecting the panel to the trunk */
+.limb::before {
+  content: "";
+  position: absolute;
+  top: calc(10 * var(--px));
+  width: calc(6 * var(--px));
+  height: calc(3 * var(--px));
+  background: #5a3322;
+  box-shadow: inset 0 calc(1 * var(--px)) 0 #75442f;
+}
+.limb[data-side="right"]::before {
+  left: calc(-6 * var(--px) - 1px);
+}
+.limb[data-side="left"]::before {
+  right: calc(-6 * var(--px) - 1px);
+}
+.limbCanopy {
+  border-top-color: #62b06a;
+}
+.limbRoot {
+  border-top-color: #75442f;
+  background: linear-gradient(180deg, #1f1a17, var(--graphite));
+}
+.rootTag {
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: #a0623f;
+  text-transform: uppercase;
+}
+
+/* Skills as leaves on the branch */
+.leaves .chip {
+  border-color: rgba(98, 176, 106, 0.45);
+}
+.leaves .chip::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  margin-right: 6px;
+  background: #62b06a;
+  box-shadow: 2px -2px 0 #3f8a4b;
+}
+
+@media (max-width: 820px) {
+  .skillTree {
+    --trunk: calc(36 * var(--px));
+  }
+  .trunkCol {
+    left: 0;
+  }
+  .limbs {
+    grid-template-columns: var(--trunk) minmax(0, 1fr);
+  }
+  .limb[data-side="left"],
+  .limb[data-side="right"] {
+    grid-column: 2;
+  }
+  .limb[data-side="left"]::before {
+    right: auto;
+    left: calc(-6 * var(--px) - 1px);
+  }
+}
+@media (max-width: 639px) {
+  .skillTree {
+    --px: calc(100vw / 160);
+  }
+  .limb {
+    padding: var(--s-4);
+  }
+}
+
+/* ---------- DSA: dungeon map + puzzle rooms ---------- */
+
+.topic {
+  position: relative;
+  border: 2px solid #2c3542;
+  border-style: solid;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 7px, rgba(0, 0, 0, 0.18) 7px 8px),
+    #1a1f27;
+  transition:
+    border-color 300ms steps(3),
+    background-color 300ms steps(3);
+}
+.topic[data-visited="true"] {
+  border-color: #5c6f88;
+}
+.topic[data-visited="true"]::after {
+  /* Torch lit once the room has been visited */
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 4px;
+  height: 6px;
+  background: #e8b84f;
+  box-shadow: 0 -2px 0 #f2d27a;
+}
+.roomLabel {
+  font-family: var(--font-pixel);
+  font-size: 0.625rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+.puzzle {
+  border-top: 3px solid #e8b84f;
+}
+.puzzleTag {
+  font-family: var(--font-pixel);
+  font-size: 0.625rem;
+  color: #e8b84f;
+  text-transform: uppercase;
+}
+
+/* ---------- System design: machine room (diagram on a belt) ---------- */
+
+.machine {
+  position: relative;
+  padding-bottom: 10px;
+}
+.machine::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  background:
+    repeating-linear-gradient(90deg, #2c3542 0 6px, #1a1f27 6px 8px) 0 2px / 100% 4px no-repeat,
+    linear-gradient(#a7adb8 0 2px, #3a4454 2px 6px, #101419 6px);
+}
+
+/* ---------- Experience: mine-shaft elevator ---------- */
+
+.shaftWrap {
+  --px: calc(min(100vw, 1600px) / 360);
+  --shaft: calc(26 * var(--px));
+  position: relative;
+}
+.shaftWrap > [aria-hidden="true"]:first-child {
+  left: 0;
+  width: var(--shaft);
+}
+.shaft {
+  display: grid;
+  gap: var(--s-6);
+  list-style: none;
+  padding-left: calc(var(--shaft) + var(--s-4));
+}
+.floorPlate {
+  position: absolute;
+  left: calc(-1 * var(--s-4) - 6px);
+  top: 20px;
+  width: calc(var(--s-4) + 6px);
+  height: 4px;
+  background: #5c6f88;
+  box-shadow: 0 2px 0 #2c3542;
+}
+@media (max-width: 639px) {
+  .shaftWrap {
+    --px: calc(100vw / 160);
+  }
+}
+
+/* ---------- Education: academy castle wall ---------- */
+
+.castleWall {
+  border: 2px solid #3a4454;
+  border-top: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 15px, rgba(0, 0, 0, 0.18) 15px 16px),
+    repeating-linear-gradient(90deg, transparent 0 31px, rgba(0, 0, 0, 0.12) 31px 32px),
+    linear-gradient(135deg, var(--graphite-2), var(--graphite));
+}
+
+/* ---------- Achievements: trophy pedestals ---------- */
+
+.pedestal {
+  margin-bottom: 14px;
+}
+.pedestal::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -14px;
+  height: 12px;
+  background:
+    linear-gradient(#a7adb8 0 2px, #3a4454 2px 8px, #232a35 8px);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Contact: panel left, finale right ---------- */
+
+.contactGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .contactGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

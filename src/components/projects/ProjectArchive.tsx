@@ -38,7 +38,12 @@ export function ProjectArchive() {
         ) : (
           <ProjectFilter
             counts={counts}
-            items={projects.map((p) => ({ key: p.slug, track: p.track, node: <ProjectCard project={p} /> }))}
+            items={projects.map((p, i) => ({
+              key: p.slug,
+              track: p.track,
+              highlight: p.highlight,
+              node: <ProjectCard project={p} level={`2-${i + 1}`} />,
+            }))}
           />
         )}
       </div>

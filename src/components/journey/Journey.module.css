@@ -307,41 +307,462 @@
   }
 }
 
-/* ---------- Lane (desktop): room for the descending character ---------- */
+/* ==========================================================================
+   Tracks inside the worlds
+   ========================================================================== */
 
+/* Height follows the shared pixel scale (art px × CSS px per art px). */
+.corridor,
+.finaleStage {
+  position: relative;
+  height: calc(var(--h) * min(100vw, 1600px) / 360);
+  margin-block: var(--s-3);
+  pointer-events: none;
+}
+@media (max-width: 639px) {
+  .corridor,
+  .finaleStage {
+    height: calc(var(--h) * 100vw / 160);
+  }
+}
+
+.trackSvg {
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: block;
+  overflow: visible;
+}
+.trackSvg {
+  --band-bg: var(--void);
+}
+
+/* ---------- Blocks, coins, pop-ups ---------- */
+
+.blockFace {
+  fill: #b9873a;
+}
+.blockHi {
+  fill: #f2d27a;
+}
+.blockLo {
+  fill: #7a5426;
+}
+.qmark rect {
+  fill: #fff4d6;
+}
+.block[data-kind="brick"] .blockFace {
+  fill: #8c5439;
+}
+
+.bump {
+  transform-box: fill-box;
+}
+.block[data-hit="true"] .bump {
+  animation: bump 260ms steps(3);
+}
+@keyframes bump {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+/* Used block: dark and empty */
+.block[data-hit] .blockFace,
+.block[data-hit] .blockHi,
+.block[data-hit] .blockLo {
+  fill: #3a3326;
+}
+.block[data-hit] .qmark rect {
+  fill: #5a4d36;
+}
+.block[data-kind="acorn"][data-hit] .bump {
+  opacity: 0.25;
+}
+
+.coin {
+  opacity: 0;
+}
+.coin text {
+  fill: #f2d27a;
+  font-family: var(--font-pixel);
+  font-size: 4px;
+}
+.block[data-hit="true"] .coin {
+  animation: coin 900ms steps(9) forwards;
+}
+@keyframes coin {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.star {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: twinkle 1.2s steps(2) infinite;
+}
+@keyframes twinkle {
+  50% {
+    transform: scale(1.15);
+  }
+}
+.block[data-kind="star"][data-hit] .star {
+  animation: none;
+  opacity: 0;
+  transition: opacity 300ms steps(3);
+}
+
+.toast {
+  position: absolute;
+  z-index: 4;
+  width: max-content;
+  max-width: min(260px, 70vw);
+  padding: 6px 10px;
+  background: var(--void-deep);
+  border: 1px solid #f2d27a;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  transform: translate(-50%, 0);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.toastTag {
+  display: block;
+  font-family: var(--font-pixel);
+  font-size: 0.625rem;
+  color: #f2d27a;
+  text-transform: uppercase;
+}
+.toast[data-show="true"] {
+  animation: toast 2600ms steps(13) forwards;
+}
+@keyframes toast {
+  0% {
+    opacity: 0;
+    visibility: visible;
+    transform: translate(-50%, 6px);
+  }
+  12%,
+  80% {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -4px);
+  }
+}
+
+/* Items unlocked by a block sparkle once (they are always visible anyway). */
+:global([data-unlocked="true"]) {
+  animation: unlocked 1200ms steps(6);
+}
+@keyframes unlocked {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  30%,
+  60% {
+    box-shadow:
+      0 0 0 2px #f2d27a,
+      4px 4px 0 2px rgba(242, 210, 122, 0.25);
+  }
+}
+
+/* ---------- Corridor themes ---------- */
+
+.mapLabel {
+  fill: var(--text-2);
+  font-family: var(--font-pixel);
+  font-size: 4px;
+}
+.bulbA,
+.bulbB {
+  fill: #f2d27a;
+}
+.bulbB {
+  opacity: 0.3;
+}
+.theme_select .bulbA {
+  animation: led 1s steps(1) infinite;
+}
+.marquee {
+  fill: #f2d27a;
+  font-family: var(--font-pixel);
+  font-size: 4px;
+  letter-spacing: 0.6px;
+}
+.flame {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: flame 0.6s steps(2) infinite;
+}
+@keyframes flame {
+  50% {
+    transform: scaleY(0.75);
+  }
+}
+.belt {
+  animation: belt 0.5s steps(2) infinite;
+}
+@keyframes belt {
+  to {
+    transform: translateX(4px);
+  }
+}
+
+/* ---------- Vertical tracks ---------- */
+
+.trunkStage,
+.shaftStage,
+.laneStage {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.cab {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  will-change: transform;
+}
+.cab svg {
+  display: block;
+}
+
+/* Lane: right margin beside its host block (wide screens only). */
+.laneStage {
+  left: calc(100% + 8px);
+  width: 160px;
+}
+@media (max-width: 1099px) {
+  .laneStage {
+    display: none;
+  }
+}
 @media (min-width: 1100px) {
-  .zone :global(.container) {
-    /* Guarantee ≥ 188px of right margin for the ledge lane. */
+  .zone[data-lane] :global(.container) {
     padding-right: max(var(--gutter), calc(var(--gutter) + 140px - (100vw - var(--container)) / 2));
   }
 }
 
-.lane {
-  --band-bg: transparent;
-  position: absolute;
-  z-index: 2;
-  pointer-events: none;
+/* ---------- Finale ---------- */
+
+.finale {
+  display: grid;
+  gap: var(--s-4);
+  align-content: start;
 }
-.lane svg {
-  display: block;
-  overflow: visible;
+.finaleStage {
+  margin: 0;
+}
+.portalCore {
+  animation: glow 2s steps(4) infinite;
+}
+.goalFlag {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: flag 1.6s steps(2) infinite;
 }
 
-.beam {
+.summary {
   position: absolute;
-  z-index: 0;
-  pointer-events: none;
+  top: 0;
+  right: 0;
+  z-index: 5;
+  min-width: 200px;
+  padding: var(--s-3) var(--s-4);
+  background: var(--void-deep);
+  border: 2px solid #f2d27a;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition:
+    opacity 300ms steps(3),
+    transform 300ms steps(3),
+    visibility 0s 300ms;
+}
+.summary[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 300ms steps(3),
+    transform 300ms steps(3);
+}
+.summaryTitle {
+  margin-bottom: var(--s-2);
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  color: #f2d27a;
+  text-transform: uppercase;
+}
+.summary dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px var(--s-4);
+  margin: 0;
+}
+.summary dl > div {
+  display: contents;
+}
+.summary dt {
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.summary dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+  text-align: right;
+}
+
+.warpLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  list-style: none;
+}
+.warpLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 44px;
+  padding: 0 var(--s-3) 0 var(--s-2);
+  border: 1px solid #58a85c;
+  background: #12301a;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+.warpLink:hover {
+  background: #1b4425;
+}
+.warpPipe {
+  width: 18px;
+  height: 22px;
   background:
-    linear-gradient(180deg, #5c6f88 0 2px, #2c3542 2px calc(100% - 2px), #161b22 calc(100% - 2px)),
-    #2c3542;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%);
-  mask-image: linear-gradient(90deg, transparent, #000 40%);
-  opacity: 0.8;
+    linear-gradient(90deg, #12301a 0 2px, #58a85c 2px 5px, #8fcf86 5px 7px, #3a8346 7px 13px, #24552d 13px 16px, #12301a 16px)
+      0 6px / 18px 16px no-repeat,
+    linear-gradient(90deg, #12301a 0 1px, #58a85c 1px 4px, #8fcf86 4px 6px, #3a8346 6px 14px, #24552d 14px 17px, #12301a 17px) 0 0 /
+      18px 6px no-repeat;
 }
 
-@media (max-width: 1099px) {
-  .lane,
-  .beam {
+/* Mini warp pipe used for big-jump warps (positioned by the controller) */
+.warpMini {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  background: none;
+  pointer-events: none;
+  will-change: transform;
+}
+.warpMini[data-show="false"] {
+  display: none;
+}
+
+/* ---------- HUD: slim status strip attached under the header ---------- */
+
+.hud {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--s-4);
+  height: 26px;
+  padding: 0 max(var(--gutter), calc((100vw - var(--container)) / 2 + var(--gutter)));
+  background: rgba(11, 14, 18, 0.9);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-100%);
+  transition:
+    opacity 200ms steps(2),
+    transform 200ms steps(2);
+}
+.hud[data-show="true"] {
+  opacity: 1;
+  transform: none;
+}
+.hudItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.hudKey {
+  color: var(--steel);
+}
+.hudCoin {
+  width: 6px;
+  height: 8px;
+  background: #f2d27a;
+  box-shadow: inset -2px 0 0 #c99a3a;
+}
+.hud[data-bump] [data-hud-score] {
+  animation: hudBump 300ms steps(3);
+}
+@keyframes hudBump {
+  50% {
+    color: #f2d27a;
+  }
+}
+.hudWorld {
+  margin-right: auto;
+  order: -1;
+}
+@media (max-width: 760px) {
+  .hud {
+    gap: var(--s-3);
+    font-size: 0.625rem;
+  }
+  .hudWorld {
     display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud {
+    display: none;
+  }
+  .flame,
+  .belt,
+  .star,
+  .bulbA,
+  .goalFlag,
+  .portalCore {
+    animation: none;
   }
 }

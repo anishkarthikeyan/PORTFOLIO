@@ -5,7 +5,8 @@ import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
 import { StatusBadge } from "@/components/ui/Status";
 import styles from "./Projects.module.css";
 
-export function ProjectCard({ project }: { project: Project }) {
+/** `level` is the in-world label, e.g. "2-1" (purely decorative numbering). */
+export function ProjectCard({ project, level }: { project: Project; level?: string }) {
   const p = project;
   const headingId = `card-${p.slug}`;
   return (
@@ -15,6 +16,12 @@ export function ProjectCard({ project }: { project: Project }) {
       data-track={p.track}
       aria-labelledby={headingId}
     >
+      {level && (
+        <p className={styles.level}>
+          <span className={styles.door} aria-hidden="true" />
+          <span>Level {level}</span>
+        </p>
+      )}
       <div className={styles.cardMeta}>
         <span className={styles.track}>
           <span className={styles.trackIcon} aria-hidden="true">
@@ -37,7 +44,7 @@ export function ProjectCard({ project }: { project: Project }) {
         <ArchitectureDiagram diagram={p.diagram} compact />
       </div>
 
-      <p className={styles.highlight}>
+      <p className={styles.highlight} data-unlock-id={`hl-${p.slug}`}>
         <span className={styles.highlightLabel}>Highlight</span>
         {p.highlight}
       </p>
@@ -62,7 +69,7 @@ export function ProjectCard({ project }: { project: Project }) {
             </a>
           )}
           <Link href={`/projects/${p.slug}`} className="btn btn-sm" aria-describedby={headingId}>
-            Case study ▸
+            Enter level ▸
           </Link>
         </div>
       </div>

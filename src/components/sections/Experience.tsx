@@ -2,6 +2,7 @@ import { experience } from "@/data/portfolio";
 import { configuredLinks, visible } from "@/lib/content";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ReplaceMe, SampleNotice, StatusBadge } from "@/components/ui/Status";
+import { ElevatorTrack } from "@/components/journey/ElevatorTrack";
 import styles from "./sections.module.css";
 
 export function Experience() {
@@ -27,10 +28,12 @@ export function Experience() {
         {entries.length === 0 ? (
           <p className="muted">No entries yet.</p>
         ) : (
-          <ol className={styles.timeline}>
+          <div className={styles.shaftWrap}>
+            <ElevatorTrack />
+          <ol className={styles.shaft}>
             {entries.map((e) => (
-              <li key={`${e.organization}-${e.role}`} className={styles.timelineItem} data-anchor>
-                <span className={styles.timelineDot} aria-hidden="true" />
+              <li key={`${e.organization}-${e.role}`} className={styles.timelineItem} data-anchor data-floor>
+                <span className={styles.floorPlate} aria-hidden="true" />
                 <article className={`panel ${e.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
                   <header className={styles.expHead}>
                     <div>
@@ -91,6 +94,7 @@ export function Experience() {
               </li>
             ))}
           </ol>
+          </div>
         )}
       </div>
     </section>

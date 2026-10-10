@@ -37,12 +37,35 @@ export interface PipeSpec {
 }
 
 export type RouteStep =
-  | { kind: "emerge"; weight?: number }
+  | { kind: "emerge"; weight?: number; /** Named hole instead of the exit pipe. */ from?: string }
   | { kind: "walk" | "run"; to: number; weight?: number }
-  | { kind: "jump"; to: Point; apex?: number; weight?: number }
-  | { kind: "idle"; weight?: number }
-  | { kind: "enter"; weight?: number }
-  | { kind: "celebrate"; weight?: number };
+  /** `bump` names a block hit from below at the top of the arc. */
+  | { kind: "jump"; to: Point; apex?: number; weight?: number; bump?: string }
+  | { kind: "idle"; weight?: number; pose?: "idle" | "wave" }
+  | { kind: "enter"; weight?: number; /** Named hole instead of the entry pipe. */ into?: string }
+  | { kind: "celebrate"; weight?: number }
+  /** Vertical movement on a vine/ladder (climb) or pole (slide). */
+  | { kind: "climb" | "slide"; toY: number; weight?: number }
+  /** Standing still on a moving platform (elevator, conveyor). */
+  | { kind: "ride"; to: Point; weight?: number }
+  /** Travel hidden inside the world (e.g. through a hollow trunk). */
+  | { kind: "hide"; to: Point; weight?: number }
+  /** Touch a collectible at the current position (e.g. the star). */
+  | { kind: "grab"; item: string; weight?: number };
+
+/** A bumpable block or collectible. Hitting it awards points and can unlock an item. */
+export interface BlockSpec {
+  id: string;
+  /** Top-left in art px. Blocks are 8 × 8. */
+  x: number;
+  y: number;
+  kind: "question" | "brick" | "acorn" | "star";
+  points: number;
+  /** `data-unlock-id` of a content element to highlight when hit. */
+  unlock?: string;
+  /** Short text shown in the pop-up when hit. */
+  label?: string;
+}
 
 export type PropKind =
   | "flag"
@@ -80,7 +103,13 @@ export interface BandLayout {
   /** The section heading is revealed once this many route steps are complete. */
   revealAfter: number;
   props: PropSpec[];
+  blocks?: BlockSpec[];
+  /** Extra openings the character can enter/emerge from (tree knot holes). */
+  holes?: Record<string, PipeSpec>;
 }
+
+/** Any track the character can travel along (bands, corridors, tree, …). */
+export type TrackLayout = BandLayout;
 
 export interface WorldBand {
   id: string;
@@ -371,6 +400,7 @@ export const WORLD_BANDS: WorldBand[] = [
     sectionId: "contact",
     world: 6,
     title: "Contact portal",
+    next: "Finale",
     accent: "#a9bdd6",
     wide: {
       width: W,
@@ -378,28 +408,30 @@ export const WORLD_BANDS: WorldBand[] = [
       platforms: [
         { x: 0, y: 52, w: 130, kind: "ground" },
         { x: 150, y: 44, w: 40, h: 8, kind: "block" },
-        { x: 210, y: 36, w: 150, kind: "ground" },
+        { x: 210, y: 52, w: 150, kind: "ground" },
       ],
       exitPipe: EXIT_W,
+      entryPipe: ENTRY_W,
       route: [
         { kind: "emerge" },
         { kind: "jump", to: [70, 52], apex: 10 },
         { kind: "run", to: 118 },
         { kind: "jump", to: [168, 44], apex: 8 },
-        { kind: "jump", to: [236, 36], apex: 8 },
-        { kind: "walk", to: 286 },
-        { kind: "celebrate", weight: 1.2 },
+        { kind: "jump", to: [236, 52], apex: 6 },
+        { kind: "walk", to: 304 },
+        { kind: "jump", to: [333, 36], apex: 10 },
+        { kind: "enter" },
       ],
       revealAfter: 2,
       props: [
-        { kind: "portal", x: 300, y: 36 },
-        { kind: "flag", x: 342, y: 36, label: "GOAL" },
+        { kind: "signpost", x: 270, y: 52, label: "FINALE" },
+        { kind: "lamp", x: 96, y: 52 },
       ],
     },
     compact: compact({
       start: "pipe",
-      end: "portal",
-      props: [{ kind: "portal", x: 128, y: 76 }],
+      end: "pipe",
+      props: [{ kind: "signpost", x: 60, y: 58, label: "FINALE" }],
     }),
   },
 ];

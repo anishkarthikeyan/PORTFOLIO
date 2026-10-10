@@ -520,3 +520,8 @@ html[data-journey="motion"] [data-anchor]:not([data-shown="true"]) {
   opacity: 0;
   transform: translateY(18px);
 }
+
+/* Anchors land below the header + game HUD strip while the journey runs. */
+html[data-journey="motion"] {
+  scroll-padding-top: calc(var(--header-h) + 26px + 12px);
+}

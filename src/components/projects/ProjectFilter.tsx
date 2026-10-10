@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Track } from "@/data/types";
+import { Corridor } from "@/components/journey/Corridor";
 import styles from "./Projects.module.css";
 
 type Filter = "all" | Track;
@@ -20,7 +21,7 @@ export function ProjectFilter({
   items,
   counts,
 }: {
-  items: { track: Track; key: string; node: React.ReactNode }[];
+  items: { track: Track; key: string; highlight: string; node: React.ReactNode }[];
   counts: Record<Filter, number>;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -55,13 +56,35 @@ export function ProjectFilter({
           Showing {shown.length} project{shown.length === 1 ? "" : "s"}
         </p>
       </div>
-      <div className={styles.grid}>
-        {shown.map((i) => (
-          <div key={i.key} className={styles.cell}>
-            {i.node}
+      {/* One island per track: a corridor with a "?" block above each card, then the cards. */}
+      {(["sde", "aiml"] as const).map((track) => {
+        const group = shown.filter((i) => i.track === track);
+        if (!group.length) return null;
+        return (
+          <div key={track} className={styles.island} data-island={track}>
+            <Corridor
+              id={`island-${track}`}
+              world={2}
+              label={track === "sde" ? "SDE island" : "AI/ML island"}
+              theme="island"
+              sign={track === "sde" ? "SDE ISLAND" : "AI/ML ISLAND"}
+              stopSelector="[data-anchor]"
+              blocks={group.map((i) => ({
+                id: `hl-${i.key}`,
+                unlock: `hl-${i.key}`,
+                label: i.highlight.length > 90 ? `${i.highlight.slice(0, 88)}…` : i.highlight,
+              }))}
+            />
+            <div className={styles.grid}>
+              {group.map((i) => (
+                <div key={i.key} className={styles.cell}>
+                  {i.node}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </>
   );
 }

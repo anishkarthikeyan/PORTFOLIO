@@ -3,6 +3,7 @@ import type { AchievementKind } from "@/data/types";
 import { visible } from "@/lib/content";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ReplaceMe, SampleNotice, StatusBadge } from "@/components/ui/Status";
+import { Corridor } from "@/components/journey/Corridor";
 import styles from "./sections.module.css";
 
 const ORDER: AchievementKind[] = ["Hackathon", "Competition", "Award", "Certification", "Publication", "Open Source", "Talk"];
@@ -27,10 +28,19 @@ export function Achievements() {
           )}
         </SectionHeader>
 
+        <Corridor
+          id="trophy-room"
+          world={5}
+          label="Trophy room"
+          theme="trophy"
+          stopSelector="[data-unlock-id^='tr-']"
+          blocks={groups
+            .flatMap((g) => g.items)
+            .map((a, k) => ({ id: `tr-${k}`, unlock: `tr-${k}`, label: a.title }))}
+        />
         <ul className={styles.cards3}>
-          {groups.flatMap((g) =>
-            g.items.map((a) => (
-              <li key={a.title} data-anchor className={`panel ${a.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
+          {groups.flatMap((g) => g.items).map((a, k) => (
+              <li key={a.title} data-anchor data-unlock-id={`tr-${k}`} className={`${styles.pedestal} panel ${a.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
                 <p className={styles.cardTop}>
                   <span className="chip">{a.kind}</span>
                   <StatusBadge status={a.status} />
@@ -50,8 +60,7 @@ export function Achievements() {
                   </a>
                 )}
               </li>
-            )),
-          )}
+          ))}
         </ul>
       </div>
     </section>

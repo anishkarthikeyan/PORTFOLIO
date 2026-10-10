@@ -12,6 +12,7 @@ import { Contact } from "@/components/sections/Contact";
 import { getVisibleSections } from "@/lib/content";
 import { WorldZone } from "@/components/journey/WorldZone";
 import { JourneyController } from "@/components/journey/JourneyController";
+import { Hud } from "@/components/journey/Hud";
 import journey from "@/components/journey/Journey.module.css";
 
 export default function Home() {
@@ -29,7 +30,7 @@ export default function Home() {
         <WorldZone world="projects">
           <ProjectArchive />
         </WorldZone>
-        <WorldZone world="profile">
+        <WorldZone world="profile" lane>
           <Profile />
         </WorldZone>
         {(show.skills || show.dsa || show.systemDesign) && (
@@ -47,6 +48,7 @@ export default function Home() {
         <WorldZone world="contact">
           <Contact />
         </WorldZone>
+        <Hud />
         <JourneyController />
       </div>
     </>

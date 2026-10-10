@@ -5,6 +5,7 @@ import { allLinks, configuredLinks, isConfigured, isExternal } from "@/lib/conte
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { DevPlaceholder } from "@/components/ui/Status";
 import { TerminalButton } from "@/components/terminal/TerminalButton";
+import { FinaleStage } from "@/components/journey/FinaleStage";
 import styles from "./sections.module.css";
 
 export function Contact() {
@@ -13,7 +14,7 @@ export function Contact() {
 
   return (
     <section id="contact" className="section" aria-labelledby="contact-title">
-      <div className="container">
+      <div className={`container ${styles.contactGrid}`}>
         <div data-anchor className={`panel ${styles.portal}`}>
           <div className={styles.portalArt} aria-hidden="true">
             <PixelSprite rows={ICON_PORTAL} palette={ICON_PORTAL_PALETTE} scale={6} />
@@ -62,6 +63,8 @@ export function Contact() {
             )}
           </div>
         </div>
+        {/* Finale: stair bricks → star → journey summary → flagpole → portal */}
+        <FinaleStage links={isConfigured(links.resume) ? [links.resume, ...live] : live} />
       </div>
     </section>
   );

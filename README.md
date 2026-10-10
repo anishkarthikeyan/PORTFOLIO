@@ -98,34 +98,45 @@ src/
 
 ## Scroll journey (pixel platformer)
 
-As you scroll the home page, one pixel character travels through six worlds. It emerges from a green warp pipe, crosses platforms, and dives into the next pipe.
+One pixel character travels through the whole home page. Every section is part of a world with its own scenery and its own way of moving through it.
 
-| World | Band placed before |
+| World | What happens |
 | --- | --- |
-| 1 · Spawn point | World select (right after the hero) |
-| 2 · Project worlds (SDE + AI/ML islands) | Projects |
-| 3 · Player profile | About |
-| 4 · Skill tree (also covers DSA + system design) | Skills |
-| 5 · Experience archive (experience, education, achievements) | Experience |
-| 6 · Contact portal (final celebrate pose) | Contact |
+| 1 · Spawn + world select | Overworld map: walks node to node under the five rooms |
+| 2 · Projects | SDE and AI/ML **islands**, with a "?" block above each card that pops out its highlight. Cards are "LEVEL 2-x" doors, and the button reads "Enter level". |
+| 3 · Player profile | Zig-zag ledge lane beside the profile (desktop), an arcade "player select" frame, "?" blocks that reveal each interest, and a waving pedestal |
+| 4 · Skill tree | A real pixel **tree**: canopy → branches → roots (fundamentals). The character climbs down vines and in and out of knot holes; acorns unlock categories. Also the dungeon (DSA topic rooms light up as visited, puzzle-room blocks) and the conveyor through the system-design machine room. |
+| 5 · Experience archive | Mine-shaft **elevator** that stops at each entry's floor, castle battlements with the EXPECTED 2028 banner, and the trophy room |
+| 6 · Contact | **Finale**: three stair bricks → star (opens the "Your journey" summary) → flagpole slide → portal. Configured links also appear as labelled warp pipes. |
 
-- **Config:** `src/data/worlds.ts` holds platforms, pipes, props and the route for each band, with `wide` and `compact` (phone) layouts.
-- **Math:** `src/lib/journey.ts` is pure. It maps scroll position to band progress, then route progress, then character state.
-- **Rendering:** `src/components/journey/` contains `WorldBand`, `WarpPipe`, `PixelPlatform`, `WorldProps`, `heroSprite`, and `JourneyController`. The controller is the only thing that moves the character.
-- **How it behaves:**
-  - The character's state is a pure function of scroll position. Reverse scrolling replays the states backwards, with the character turning to face its direction of travel. Fast scrolls jump to the correct state.
-  - Work happens only in a `requestAnimationFrame` scheduled by scroll or resize. Nothing runs while idle.
-- **World zones (content inside the world):** each world is a `<WorldZone>` (`src/components/journey/WorldZone.tsx`). It holds the band and the sections of that world, set inside the same scenery: a starfield with vertical parallax, accent light, distant silhouettes and a pixel ground. Panels and headings "power on" with a stepped reveal as they enter the viewport, and reverse when scrolled back below it.
-- **Lane (desktops ≥ 1100px):** the content column leaves at least 188px of right margin for a ledge tower (`src/lib/lane.ts`, pure and tested).
-  - The character comes out of the band's pipe into the lane, then descends ledges bolted to the headings and right-hand cards. It reaches each one as it crosses mid-screen, then pipes into the next world.
-  - A single "target line" halfway down the viewport drives bands and lanes alike, so the journey is continuous.
-  - Smaller screens keep the band-only journey.
-- **Safety:**
-  - Bands are `aria-hidden` and contain no text content or controls, so the character never covers content.
-  - Navigation, anchors and keyboard use are unchanged.
-- **Reduced motion:** the character stands still in the nearest band, with no travel, parallax or puffs. All headings stay fully visible.
-- **Without JavaScript:** the bands are static scenery and every section is fully visible.
-- **Editing routes:** after changing a route, run `npm test`. The tests check that every landing is on a surface, that no jump passes through a platform, and that the sprite stays inside its band.
+**How movement works**
+- **Engine:** everything is in `src/lib/`, and all of it is pure and tested.
+  - `journey.ts`: routes and poses, measured in beats.
+  - `tracks.ts`: builders for each world.
+  - `lane.ts`: the zig-zag ledge lane.
+  - `chase.ts`: the global timeline and catch-up logic.
+- **Scroll position** sets a target point on one global timeline. The character chases it at game speed and stays within about a second, sprinting when behind.
+- **Big jumps** (a nav click, a fast flick, or more than about 18 beats behind) are crossed by warping through a pipe.
+- **Scrolling up** chases backwards.
+- **Work only happens while the character is moving.** Nothing runs while idle.
+- **Each track measures itself** from the real layout (`useTrack`) and registers with the single `JourneyController`. "?" blocks line up with the cards they unlock.
+
+**Game score is separate from portfolio content**
+- The HUD strip under the header shows POINTS, blocks, DISTANCE and the current WORLD.
+- Values last for the session only.
+- Nothing is ever locked: unlocked items are always visible in place, and a block hit just makes them sparkle.
+
+**Accessibility**
+- The game layer is `aria-hidden`.
+- Reduced motion shows a still character and hides the HUD.
+- Without JavaScript all content is visible.
+
+**Editing:** after changing any route or builder, run `npm test`. The geometry tests check:
+- landings are on a surface
+- no move passes through solid geometry
+- the sprite stays inside its track
+- every block is actually hit by the character's head
+- the chase timing
 
 ## Accessibility and responsiveness
 

@@ -2,6 +2,7 @@ import { codingProfiles, dsaTopics, problemExamples } from "@/data/portfolio";
 import { visible } from "@/lib/content";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ReplaceMe, SampleNotice, StatusBadge, ValueOr } from "@/components/ui/Status";
+import { Corridor } from "@/components/journey/Corridor";
 import styles from "./sections.module.css";
 
 export function Dsa() {
@@ -78,7 +79,10 @@ export function Dsa() {
             </p>
             <ul className={styles.topicGrid} data-anchor>
               {topics.map((t) => (
-                <li key={t.topic} className={styles.topic} data-has-evidence={Boolean(t.evidence)}>
+                <li key={t.topic} className={styles.topic} data-has-evidence={Boolean(t.evidence)} data-visit>
+                  <span className={styles.roomLabel} aria-hidden="true">
+                    Room
+                  </span>
                   <span className={styles.topicName}>{t.topic}</span>
                   <span className={styles.topicEvidence}>{t.evidence ?? <ReplaceMe>REPLACE ME — evidence</ReplaceMe>}</span>
                 </li>
@@ -90,9 +94,20 @@ export function Dsa() {
         {problems.length > 0 && (
           <div className={styles.subBlock}>
             <h3 className={styles.h3}>Representative problems</h3>
+            <Corridor
+              id="dungeon"
+              world={4}
+              label="Dungeon"
+              theme="dungeon"
+              stopSelector="[data-unlock-id^='pz-']"
+              blocks={problems.map((p, k) => ({ id: `pz-${k}`, unlock: `pz-${k}`, label: `Puzzle: ${p.pattern}` }))}
+            />
             <ul className={styles.cards3}>
-              {problems.map((p) => (
-                <li key={p.title} data-anchor className={`panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
+              {problems.map((p, k) => (
+                <li key={p.title} data-anchor data-unlock-id={`pz-${k}`} className={`${styles.puzzle} panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
+                  <p className={styles.puzzleTag} aria-hidden="true">
+                    Puzzle room
+                  </p>
                   <p className={styles.cardTop}>
                     <span className="chip">{p.pattern}</span>
                     <StatusBadge status={p.status} />

@@ -2,6 +2,7 @@ import { getBand, WORLD_BANDS, type BandLayout, type PipeSpec, type WorldBand as
 import { PixelPlatform, PlatformPatterns } from "./PixelPlatform";
 import { WarpPipe } from "./WarpPipe";
 import { WorldProp } from "./WorldProps";
+import { BandTrack } from "./BandTrack";
 import styles from "./Journey.module.css";
 
 /** Deterministic pseudo-random for stable skylines (no hydration mismatch). */
@@ -119,6 +120,7 @@ export function WorldBand({ id }: { id: string }) {
       </div>
       <Stage band={band} layout={band.wide} variant="wide" />
       <Stage band={band} layout={band.compact} variant="compact" />
+      <BandTrack id={band.id} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { MATURITY_LABEL, visible } from "@/lib/content";
 import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SampleNotice, StatusBadge } from "@/components/ui/Status";
+import { ConveyorTrack } from "@/components/journey/ConveyorTrack";
 import styles from "./sections.module.css";
 
 export function SystemDesign() {
@@ -67,7 +68,10 @@ export function SystemDesign() {
                 </div>
               </div>
 
-              <ArchitectureDiagram diagram={d.diagram} />
+              <ConveyorTrack id={`conveyor-${d.slug}`} label="Machine room" />
+              <div className={styles.machine}>
+                <ArchitectureDiagram diagram={d.diagram} />
+              </div>
 
               <details className={styles.disclosure}>
                 <summary>Full design notes — storage, APIs, caching, failures, security, monitoring, cost</summary>

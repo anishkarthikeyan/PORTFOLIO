@@ -1,219 +1,182 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { getBand, type BandLayout } from "@/data/worlds";
-import {
-  bandProgress,
-  characterAt,
-  compileRoute,
-  parallaxOffset,
-  pickActiveBand,
-  restState,
-  type CharacterState,
-  type CompiledRoute,
-} from "@/lib/journey";
-import { buildLane, laneRestAt, laneStateAt, type Lane } from "@/lib/lane";
+import { useEffect, useRef } from "react";
+import type { TrackLayout } from "@/data/worlds";
+import { compileRoute, restState, standingBeat, stateAtBeat, type CharacterState, type CompiledRoute } from "@/lib/journey";
+import { buildJourneyMap, CHASE, chaseStep, crossedEvents, locate, targetBeat, type JourneyMap, type TrackWindow } from "@/lib/chase";
 import { buildHeroSheet, HERO_FRAME_INDEX, HERO_FRAME_ORDER, HERO_H, HERO_W } from "./heroSprite";
-import { PixelPlatform, PlatformPatterns } from "./PixelPlatform";
-import { WarpPipe } from "./WarpPipe";
+import { getTracks, onTracksChange, type TrackHandle } from "./registry";
+import { PIPE } from "./WarpPipe";
 import styles from "./Journey.module.css";
 
 const SHEET = buildHeroSheet();
-/** Must match the breakpoints in Journey.module.css. */
-const COMPACT_QUERY = "(max-width: 639px)";
-const LANE_QUERY = "(min-width: 1100px)";
-/** Desktop "camera": the character tracks a line halfway down the viewport. */
-const TARGET = 0.5;
-/** A band's route starts when the target line is this far (×vh) above it. */
-const PRE = 0.35;
+/** The character follows a target line this far down the viewport. */
+const TARGET = 0.55;
+/** Span windows: start this far (× viewport height) above the track… */
+const PRE = 0.45;
+/** …and end this far below it, so each route gets plenty of scroll. */
+const POST = 0.1;
+/** Warp animation timings (ms). */
+const SINK_MS = 260;
+const RISE_MS = 320;
+/** Art px per metre of distance. */
+const PX_PER_M = 16;
 
-interface MeasuredBand {
-  el: HTMLElement;
-  far: HTMLElement | null;
-  section: HTMLElement | null;
-  layout: BandLayout;
+interface MeasuredTrack {
+  handle: TrackHandle;
   route: CompiledRoute;
-  final: boolean;
-  /** Stage position relative to the journey root, and in document coordinates. */
+  /** Stage position relative to the journey root. */
   left: number;
   top: number;
-  docTop: number;
-  height: number;
-  /** CSS px per art px. */
   scale: number;
+  window: TrackWindow;
 }
 
-/** Geometry of one lane, in px relative to the journey root (drives rendering). */
-interface LaneView {
+interface GlobalEvent {
+  beat: number;
+  kind: "block" | "item";
   id: string;
-  left: number;
-  top: number;
-  scale: number;
-  lane: Lane;
-  beams: { left: number; top: number; width: number; height: number }[];
+  track: number;
 }
 
-interface MeasuredZone {
-  stars: HTMLElement | null;
-  docTop: number;
-  height: number;
+const routeCache = new WeakMap<TrackLayout, CompiledRoute>();
+function routeFor(layout: TrackLayout) {
+  let r = routeCache.get(layout);
+  if (!r) routeCache.set(layout, (r = compileRoute(layout)));
+  return r;
 }
 
 /**
- * Owns the single journey character (one source of truth for its position
- * and frame). Scroll → pure state (lib/journey.ts, lib/lane.ts) → direct
- * style writes. React state changes only when geometry is re-measured (lane
- * layout), never per scroll. Work happens in one rAF per scroll/resize event;
- * nothing runs while idle, and everything is cleaned up on unmount.
+ * The single owner of the journey character.
  *
- * Modes:
- *  - Desktop (≥ 1100px): one target line sweeps bands *and* lanes, so the
- *    character emerges in a band, descends the lane beside the content,
- *    and pipes into the next world — continuously.
- *  - Smaller screens: band-only journey (pipes between sections).
+ * Scroll sets a *target* beat on the global journey timeline; the displayed
+ * character *chases* it at game speed (≤ ~1s behind) and warps through a
+ * pipe for big jumps. Blocks crossed while moving forward award points,
+ * pop coins and unlock items. A rAF loop runs only while the character is
+ * catching up or warping — never while idle.
  */
 export function JourneyController() {
   const charRef = useRef<HTMLDivElement>(null);
   const spriteRef = useRef<HTMLDivElement>(null);
-  const [lanes, setLanes] = useState<LaneView[]>([]);
-  const lanesRef = useRef<LaneView[]>([]);
-  const laneElsRef = useRef(new Map<string, HTMLDivElement>());
+  const warpRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const char = charRef.current;
     const sprite = spriteRef.current;
+    const warpPipe = warpRef.current;
     const root = char?.parentElement;
-    if (!char || !sprite || !root) return;
+    if (!char || !sprite || !warpPipe || !root) return;
 
     const html = document.documentElement;
     const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const compactMq = window.matchMedia(COMPACT_QUERY);
-    const laneMq = window.matchMedia(LANE_QUERY);
-    const routeCache = new Map<string, CompiledRoute>();
+    const hud = document.querySelector<HTMLElement>("[data-hud]");
+    const hudScore = hud?.querySelector<HTMLElement>("[data-hud-score]");
+    const hudBlocks = hud?.querySelector<HTMLElement>("[data-hud-blocks]");
+    const hudDistance = hud?.querySelector<HTMLElement>("[data-hud-distance]");
+    const hudWorld = hud?.querySelector<HTMLElement>("[data-hud-world]");
 
-    let bands: MeasuredBand[] = [];
-    let zones: MeasuredZone[] = [];
+    let tracks: MeasuredTrack[] = [];
+    let scenery: { stars: { el: HTMLElement; top: number; h: number }[]; far: { el: HTMLElement; top: number; h: number }[] } = {
+      stars: [],
+      far: [],
+    };
+    let map: JourneyMap = { tracks: [], total: 0 };
+    let events: GlobalEvent[] = [];
+    let totalBlocks = 0;
+    let rootTop = 0;
+
+    // Journey state (session only).
+    let displayed = 0;
+    let target = 0;
+    let started = false;
     let frameId = 0;
-    let lastScrollY = window.scrollY;
-    let direction: 1 | -1 = 1;
-    let lastTrack = "";
+    let lastTime = 0;
+    let lastActive = -1;
     let lastScale = 0;
-    let rootDocTop = 0;
+    let lastPos: { x: number; y: number; track: number } | null = null;
+    let direction: 1 | -1 = 1;
+    let lastT = 0;
+    let score = 0;
+    let distance = 0;
+    const collected = new Set<string>();
+    const visited = new Set<number>();
+    let warp: { phase: "sink" | "rise"; t0: number; to: number } | null = null;
+    let speed = 0;
+
+    /* ------------------------------ measure ------------------------------ */
 
     const measure = () => {
-      const compact = compactMq.matches;
-      const rootRect = root.getBoundingClientRect();
-      const sy = window.scrollY;
-      rootDocTop = rootRect.top + sy;
-      // Hidden route (Next keeps visited pages mounted but display:none) or not
-      // laid out yet: nothing to measure — keep everything inert.
-      if (rootRect.width === 0 || rootRect.height === 0) {
-        bands = [];
-        zones = [];
-        lanesRef.current = [];
-        setLanes((prev) => (prev.length ? [] : prev));
+      const rr = root.getBoundingClientRect();
+      if (!rr.width || !rr.height) {
+        tracks = [];
+        map = buildJourneyMap([]);
         return;
       }
+      const sy = window.scrollY;
+      const vh = window.innerHeight;
+      rootTop = rr.top + sy;
+      // The last reachable target line (page bottom).
+      const maxT = document.documentElement.scrollHeight - vh + TARGET * vh - 2;
 
-      bands = Array.from(root.querySelectorAll<HTMLElement>("[data-band]")).flatMap((el) => {
-        const cfg = getBand(el.dataset.band ?? "");
-        if (!cfg) return [];
-        const variant = compact ? "compact" : "wide";
-        const layout = cfg[variant];
-        const key = `${cfg.id}/${variant}`;
-        if (!routeCache.has(key)) routeCache.set(key, compileRoute(layout));
-        const route = routeCache.get(key)!;
-        const stage = el.querySelector<HTMLElement>(`[data-layout="${variant}"]`);
-        const r = (stage ?? el).getBoundingClientRect();
-        const next = el.nextElementSibling;
-        return [
-          {
-            el,
-            far: el.querySelector<HTMLElement>("[data-far]"),
-            section: next instanceof HTMLElement && next.tagName === "SECTION" ? next : null,
-            layout,
-            route,
-            final: !route.endsInPipe,
-            left: r.left - rootRect.left,
-            top: r.top - rootRect.top,
-            docTop: r.top + sy,
-            height: r.height,
-            scale: r.width / layout.width,
-          },
-        ];
+      tracks = getTracks().flatMap((handle) => {
+        const r = handle.el.getBoundingClientRect();
+        if (!r.width || !r.height || !handle.layout) return [];
+        const route = routeFor(handle.layout);
+        const s = handle.scale;
+        const docTop = r.top + sy;
+        let window: TrackWindow;
+        if (handle.mode === "follow") {
+          // Beats follow the character's feet: it reaches each ledge/branch/floor
+          // as that point crosses the target line.
+          const knots: [number, number][] = [[docTop + route.segments[0].to[1] * s - 0.25 * vh, 0]];
+          for (const seg of route.segments) {
+            const t = Math.max(knots[knots.length - 1][0] + 0.5, docTop + seg.to[1] * s);
+            knots.push([t, seg.b1]);
+          }
+          window = { id: handle.id, start: knots[0][0], end: knots[knots.length - 1][0], total: route.total, knots };
+        } else {
+          const start = docTop - (handle.pre ?? PRE) * vh;
+          let end = docTop + r.height + POST * vh;
+          if (end > maxT) end = Math.max(start + 0.25 * vh, maxT);
+          window = { id: handle.id, start, end, total: route.total };
+        }
+        return [{ handle, route, left: r.left - rr.left, top: docTop - rootTop, scale: s, window }];
       });
 
-      zones = Array.from(root.querySelectorAll<HTMLElement>("[data-zone]")).map((z) => {
-        const r = z.getBoundingClientRect();
-        return { stars: z.querySelector<HTMLElement>("[data-depth]"), docTop: r.top + sy, height: r.height };
+      // Parallax layers (starfields behind worlds, far silhouettes in bands).
+      const box = (el: HTMLElement) => {
+        const b = el.getBoundingClientRect();
+        return { el, top: b.top + sy, h: b.height };
+      };
+      scenery = {
+        // Measure the zone backdrop (the starfield itself is taller and moves).
+        stars: Array.from(root.querySelectorAll<HTMLElement>("[data-depth]")).map((el) => ({ ...box(el.parentElement ?? el), el })),
+        far: Array.from(root.querySelectorAll<HTMLElement>("[data-far]")).map(box),
+      };
+
+      map = buildJourneyMap(tracks.map((t) => t.window));
+      // Keep `tracks` in map order.
+      tracks = map.tracks.map((mt) => tracks.find((t) => t.window.id === mt.id)!);
+      events = tracks.flatMap((t, i) =>
+        t.route.events.map((e) => ({ beat: map.tracks[i].offset + e.beat, kind: e.kind, id: e.id, track: i })),
+      );
+      totalBlocks = events.filter((e) => e.kind === "block").length;
+      // Re-apply collected blocks to freshly rendered scenery (no animation).
+      collected.forEach((id) => {
+        document.querySelectorAll<HTMLElement>(`[data-block-id="${id}"]`).forEach((b) => (b.dataset.hit = "done"));
       });
-
-      // Lanes: one per zone whose band warps onward (not the final world).
-      const nextLanes: LaneView[] = [];
-      if (laneMq.matches) {
-        const pre = PRE * window.innerHeight;
-        root.querySelectorAll<HTMLElement>("[data-zone]").forEach((zone) => {
-          const bandEl = zone.querySelector<HTMLElement>("[data-band]");
-          const band = bands.find((b) => b.el === bandEl);
-          const container = zone.querySelector<HTMLElement>("section .container");
-          if (!band || band.final || !container) return;
-          const zr = zone.getBoundingClientRect();
-          const cr = container.getBoundingClientRect();
-          const contentRight = cr.right - parseFloat(getComputedStyle(container).paddingRight);
-          const s = band.scale;
-          if (!(s > 0)) return;
-          const top = band.top + band.height; // root-relative
-          const topDoc = band.docTop + band.height;
-          const left = contentRight - rootRect.left + 6;
-          const widthPx = rootRect.right - rootRect.left - left - 6;
-          const endDoc = zr.bottom + sy - pre;
-
-          const anchorEls = Array.from(zone.querySelectorAll<HTMLElement>("[data-reveal], [data-anchor]")).filter(
-            (el) => !el.closest("[data-band]"),
-          );
-          const anchors: { y: number; el: HTMLElement; right: number }[] = anchorEls
-            .map((el) => {
-              const r = el.getBoundingClientRect();
-              return { el, y: (r.top + sy - topDoc) / s, right: r.right };
-            })
-            // Only headings and panels that reach the lane edge get ledges.
-            .filter((a) => a.el.hasAttribute("data-reveal") || a.right >= contentRight - 6);
-          const lane = buildLane({
-            width: widthPx / s,
-            height: (endDoc - topDoc) / s,
-            anchors: anchors.map((a) => a.y),
-          });
-          if (!lane) return;
-
-          // Girders from section headings (empty space to their right) to their ledge.
-          const beams = anchors
-            .filter(
-              (a) =>
-                a.el.hasAttribute("data-reveal") &&
-                a.el.parentElement?.classList.contains("container") &&
-                a.right < contentRight - 24,
-            )
-            .flatMap((a) => {
-              // Attach to the nearest anchored ledge just below the heading top.
-              const ledge = lane.ledges.find((l) => l.anchored && l.y >= a.y && l.y - a.y < 30);
-              if (!ledge) return [];
-              const from = a.right - rootRect.left + 16;
-              return [{ left: from, top: top + ledge.y * s, width: Math.max(0, left - from), height: 3 * s }];
-            });
-
-          nextLanes.push({ id: zone.dataset.zone ?? "", left, top, scale: s, lane, beams });
-        });
-      }
-      lanesRef.current = nextLanes;
-      setLanes((prev) => (JSON.stringify(prev) === JSON.stringify(nextLanes) ? prev : nextLanes));
     };
 
-    const place = (st: CharacterState, left0: number, top0: number, s: number, track: string, reduce: boolean) => {
-      if (!st.visible) {
+    /* ------------------------------- render ------------------------------ */
+
+    const place = (state: CharacterState, tr: MeasuredTrack, index: number, warpClip = 0) => {
+      const reduce = reduceMq.matches;
+      if (!state.visible) {
         char.dataset.visible = "false";
-        lastTrack = track;
+        lastPos = null;
         return;
       }
+      const s = tr.scale;
       if (s !== lastScale) {
         lastScale = s;
         char.style.width = `${HERO_W * s}px`;
@@ -221,96 +184,239 @@ export function JourneyController() {
         sprite.style.backgroundSize = `${HERO_W * HERO_FRAME_ORDER.length * s}px ${HERO_H * s}px`;
         sprite.style.setProperty("--fx-blink", `${-HERO_FRAME_INDEX.blink * HERO_W * s}px`);
       }
-      // Face the direction of travel: reversing the scroll turns the character around.
-      const facing = st.moving && direction < 0 ? -st.facing : st.facing;
-      const left = left0 + (st.x - HERO_W / 2) * s;
-      const top = top0 + (st.y - HERO_H) * s;
+      const facing = state.moving && direction < 0 ? -state.facing : state.facing;
+      const left = tr.left + (state.x - HERO_W / 2) * s;
+      const top = tr.top + (state.y - HERO_H) * s;
       char.style.transform = `translate3d(${left.toFixed(1)}px, ${top.toFixed(1)}px, 0)`;
-      sprite.style.setProperty("--fx", `${-HERO_FRAME_INDEX[st.frame] * HERO_W * s}px`);
+      sprite.style.setProperty("--fx", `${-HERO_FRAME_INDEX[state.frame] * HERO_W * s}px`);
       sprite.style.transform = facing < 0 ? "scaleX(-1)" : "";
-      sprite.style.clipPath = st.clip > 0 ? `inset(0 0 ${(st.clip * s).toFixed(1)}px 0)` : "";
-      char.dataset.frame = st.frame;
-      // In reduced motion, fade between places instead of travelling.
-      if (reduce && track !== lastTrack) {
+      const clip = Math.max(state.clip, warpClip);
+      sprite.style.clipPath = clip > 0 ? `inset(0 0 ${(clip * s).toFixed(1)}px 0)` : "";
+      char.dataset.frame = state.frame;
+      if (reduce && index !== lastActive) {
         char.dataset.visible = "false";
         requestAnimationFrame(() => (char.dataset.visible = "true"));
       } else {
         char.dataset.visible = "true";
       }
-      lastTrack = track;
+      // Distance travelled (art px → metres), not counting warps.
+      if (lastPos && lastPos.track === index && !warp) {
+        distance += Math.abs(state.x - lastPos.x) + Math.abs(state.y - lastPos.y);
+      }
+      lastPos = { x: state.x, y: state.y, track: index };
     };
 
-    const update = () => {
-      frameId = 0;
+    const setPuffs = (active: number, state: CharacterState | null) => {
+      tracks.forEach((t, i) => {
+        const el = t.handle.el as HTMLElement | SVGElement;
+        const on = i === active && state && !reduceMq.matches;
+        el.style.setProperty("--puff-exit", on ? state.puffExit.toFixed(3) : "0");
+        el.style.setProperty("--puff-entry", on ? state.puffEntry.toFixed(3) : "0");
+      });
+    };
+
+    const pad = (n: number, len: number) => String(Math.floor(n)).padStart(len, "0");
+
+    const updateHud = (active: number) => {
+      if (!hud) return;
+      hud.dataset.show = started && !reduceMq.matches ? "true" : "false";
+      if (hudScore) hudScore.textContent = pad(score, 6);
+      if (hudBlocks) hudBlocks.textContent = `×${pad(collected.size - (collected.has("star") ? 1 : 0), 2)}`;
+      if (hudDistance) hudDistance.textContent = `${pad(distance / PX_PER_M, 4)}m`;
+      if (hudWorld && active >= 0) {
+        const h = tracks[active].handle;
+        hudWorld.textContent = `${h.world} · ${h.label.toUpperCase()}`;
+      }
+    };
+
+    const summary = () => document.querySelector<HTMLElement>("[data-journey-summary]");
+    const fillSummary = () => {
+      const el = summary();
+      if (!el) return;
+      const set = (k: string, v: string) => {
+        const d = el.querySelector(`[data-sum="${k}"]`);
+        if (d) d.textContent = v;
+      };
+      set("score", pad(score, 6));
+      set("distance", `${pad(distance / PX_PER_M, 4)}m`);
+      set("worlds", `${visited.size}/${new Set(tracks.map((t) => t.handle.world)).size}`);
+      set("blocks", `${collected.size - (collected.has("star") ? 1 : 0)}/${totalBlocks}`);
+    };
+
+    /** Award points, pop the coin, show the unlock pop-up, sparkle the item. */
+    const collect = (e: GlobalEvent) => {
+      if (collected.has(e.id)) return;
+      collected.add(e.id);
+      const tr = tracks[e.track];
+      const spec = tr?.handle.layout.blocks?.find((b) => b.id === e.id);
+      score += spec?.points ?? 100;
+      document.querySelectorAll<HTMLElement>(`[data-block-id="${e.id}"]`).forEach((b) => (b.dataset.hit = "true"));
+      document.querySelectorAll<HTMLElement>(`[data-toast-for="${e.id}"]`).forEach((t) => (t.dataset.show = "true"));
+      if (spec?.unlock) {
+        document.querySelectorAll<HTMLElement>(`[data-unlock-id="${spec.unlock}"]`).forEach((u) => (u.dataset.unlocked = "true"));
+      }
+      hud?.setAttribute("data-bump", String(Date.now() % 2));
+      if (e.id === "star") fillSummary();
+    };
+
+    /** Draws the character for the current displayed beat. */
+    const render = (now: number) => {
       const reduce = reduceMq.matches;
-      const y = window.scrollY;
-      if (y !== lastScrollY) direction = y > lastScrollY ? 1 : -1;
-      lastScrollY = y;
-      const vh = window.innerHeight;
-      const laneMode = lanesRef.current.length > 0;
-      const t = y + TARGET * vh;
-
-      // Starfield parallax (zones near the viewport only).
-      zones.forEach((z) => {
-        if (!z.stars) return;
-        const inView = z.docTop < y + vh && z.docTop + z.height > y;
-        z.stars.style.transform =
-          !reduce && inView ? `translate3d(0, ${((y + vh / 2 - (z.docTop + z.height / 2)) * 0.12).toFixed(1)}px, 0)` : "";
+      if (!tracks.length) {
+        char.dataset.visible = "false";
+        return;
+      }
+      const { index, local } = locate(map, displayed);
+      const tr = tracks[index];
+      if (!tr) return;
+      // Worlds reached so far (including ones passed through by pipe).
+      map.tracks.forEach((mt, i) => {
+        if (displayed > mt.offset) visited.add(tracks[i].handle.world);
       });
+      if (displayed > 0.01) started = true;
 
-      // Band progress: unified target line on desktop, viewport window otherwise.
-      const progress = bands.map((b) =>
-        laneMode ? (t - (b.docTop - PRE * vh)) / (b.height + PRE * vh) : bandProgress(y, vh, b.docTop, b.height),
-      );
-
-      bands.forEach((b, i) => {
-        const p = progress[i];
-        const inView = b.docTop < y + vh && b.docTop + b.height > y;
-        const st = characterAt(b.route, b.layout, p);
-        b.el.dataset.active = inView ? "true" : "false";
-        if (b.far) b.far.style.transform = !reduce && inView ? `translate3d(${parallaxOffset(p) * b.scale}px,0,0)` : "";
-        b.el.style.setProperty("--puff-exit", reduce ? "0" : st.puffExit.toFixed(3));
-        b.el.style.setProperty("--puff-entry", reduce ? "0" : st.puffEntry.toFixed(3));
-        if (b.section) b.section.dataset.arrived = reduce || st.arrived ? "true" : "false";
-      });
-
-      // 1) A band whose route is playing.
-      const active = laneMode
-        ? progress.findIndex((p, i) => p >= 0 && (p <= 1 || (bands[i].final && bands[i].docTop + bands[i].height > y)))
-        : pickActiveBand(progress);
-      if (active >= 0) {
-        const b = bands[active];
-        const st = reduce ? restState(b.route, b.layout) : characterAt(b.route, b.layout, Math.min(progress[active], 1));
-        lanesRef.current.forEach((l) => laneElsRef.current.get(l.id)?.style.setProperty("--puff-exit", "0"));
-        return place(st, b.left, b.top, b.scale, `band:${active}`, reduce);
+      let state = reduce ? restState(tr.route, tr.handle.layout) : stateAtBeat(tr.route, local);
+      // Catching up: walks become a visible sprint.
+      if (!reduce && speed > CHASE.sprintAt && state.frame.startsWith("walk")) {
+        state = { ...state, frame: state.frame.replace("walk", "run") as CharacterState["frame"] };
+      }
+      if (reduce) {
+        // Reduced motion: stand still at the track's rest pose while it is on screen.
+        const mt = map.tracks[index];
+        if (lastT < mt.start || lastT > mt.end) state = { ...state, visible: false };
       }
 
-      // 2) A lane beside the content (desktop).
-      for (const l of lanesRef.current) {
-        const ta = (t - (rootDocTop + l.top)) / l.scale;
-        const el = laneElsRef.current.get(l.id);
-        if (ta < l.lane.startAt || ta >= l.lane.endAt) {
-          el?.style.setProperty("--puff-exit", "0");
-          el?.style.setProperty("--puff-entry", "0");
-          continue;
+      // Warp: a small pipe pops up under the feet; the character sinks / rises.
+      let warpClip = 0;
+      if (warp && !reduce) {
+        const t = now - warp.t0;
+        const dur = warp.phase === "sink" ? SINK_MS : RISE_MS;
+        const k = Math.min(1, t / dur);
+        const pipeUp = warp.phase === "sink" ? Math.min(1, k / 0.4) : k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+        warpClip = warp.phase === "sink" ? Math.max(0, (k - 0.3) / 0.7) * (HERO_H + 1) : (1 - Math.min(1, k / 0.6)) * (HERO_H + 1);
+        if (state.visible) {
+          const s = tr.scale;
+          warpPipe.style.width = `${18 * s}px`;
+          warpPipe.style.height = `${10 * s}px`;
+          warpPipe.style.transform = `translate3d(${(tr.left + (state.x - 9) * s).toFixed(1)}px, ${(tr.top + state.y * s - 10 * s * pipeUp).toFixed(1)}px, 0)`;
+          warpPipe.style.clipPath = `inset(0 0 ${(10 * s * (1 - pipeUp)).toFixed(1)}px 0)`;
+          warpPipe.dataset.show = "true";
+          // Feet stand on the warp pipe rim while it is up.
+          state = { ...state, y: state.y - 10 * pipeUp, frame: "pipe" };
         }
-        const st = reduce ? laneRestAt(l.lane, ta) : laneStateAt(l.lane, ta);
-        el?.style.setProperty("--puff-exit", reduce ? "0" : st.puffExit.toFixed(3));
-        el?.style.setProperty("--puff-entry", reduce ? "0" : st.puffEntry.toFixed(3));
-        return place(st, l.left, l.top, l.scale, `lane:${l.id}:${reduce ? Math.round(st.y) : ""}`, reduce);
+      } else {
+        warpPipe.dataset.show = "false";
       }
 
-      // 3) Between worlds: inside a pipe.
-      char.dataset.visible = "false";
-      lastTrack = "";
+      place(state, tr, index, warpClip);
+      setPuffs(index, state);
+      tr.handle.onBeat?.(local);
+      // Coordinated heading reveal for the section a band introduces.
+      tracks.forEach((t, i) => {
+        if (!t.handle.section) return;
+        const arrivedAt = map.tracks[i].offset + t.route.revealAt * t.route.total;
+        t.handle.section.dataset.arrived = reduce || displayed >= arrivedAt - 1e-6 ? "true" : "false";
+      });
+      // Summary drop-down is open while the character is past the star.
+      const star = events.find((e) => e.id === "star");
+      const sum = summary();
+      const open = Boolean(star && displayed >= star.beat && !reduce);
+      if (sum) sum.dataset.open = open ? "true" : "false";
+      if (open) fillSummary();
+      updateHud(index);
+      lastActive = index;
     };
 
-    const schedule = () => {
-      if (!frameId) frameId = requestAnimationFrame(update);
+    /* -------------------------------- loop ------------------------------- */
+
+    const tick = (now: number) => {
+      frameId = 0;
+      const dt = Math.min(0.05, lastTime ? (now - lastTime) / 1000 : 1 / 60);
+      lastTime = now;
+      const reduce = reduceMq.matches;
+
+      if (reduce) {
+        displayed = target;
+        render(now);
+        return;
+      }
+
+      if (warp) {
+        const dur = warp.phase === "sink" ? SINK_MS : RISE_MS;
+        if (now - warp.t0 >= dur) {
+          if (warp.phase === "sink") {
+            // Travel through the pipe: collect anything skipped on the way.
+            crossedEvents(events, displayed, warp.to).forEach(collect);
+            displayed = warp.to;
+            warp = { phase: "rise", t0: now, to: warp.to };
+          } else {
+            warp = null;
+          }
+        }
+      } else {
+        const r = chaseStep(map, displayed, target, dt);
+        if ("warp" in r) {
+          const { index, local } = locate(map, target);
+          const tr = tracks[index];
+          const landing = tr ? map.tracks[index].offset + standingBeat(tr.route, local) : target;
+          const visibleNow = (() => {
+            const cur = locate(map, displayed);
+            return tracks[cur.index] ? stateAtBeat(tracks[cur.index].route, cur.local).visible : false;
+          })();
+          warp = { phase: visibleNow ? "sink" : "rise", t0: now, to: landing };
+          if (!visibleNow) {
+            crossedEvents(events, displayed, landing).forEach(collect);
+            displayed = landing;
+          }
+        } else {
+          crossedEvents(events, displayed, r.beat).forEach(collect);
+          displayed = r.beat;
+          speed = r.speed;
+        }
+      }
+
+      render(now);
+      const settled = !warp && Math.abs(target - displayed) < 1e-3;
+      if (!settled) frameId = requestAnimationFrame(tick);
+      else {
+        lastTime = 0;
+        speed = 0;
+        render(now);
+      }
     };
+
+    const start = () => {
+      if (!frameId) frameId = requestAnimationFrame(tick);
+    };
+
+    /** Scroll-linked parallax (cheap transforms on layers near the viewport). */
+    const parallax = (y: number, vh: number) => {
+      const reduce = reduceMq.matches;
+      for (const z of scenery.stars) {
+        const near = z.top < y + vh && z.top + z.h > y;
+        z.el.style.transform = !reduce && near ? `translate3d(0, ${((y + vh / 2 - (z.top + z.h / 2)) * 0.12).toFixed(1)}px, 0)` : "";
+      }
+      for (const f of scenery.far) {
+        const near = f.top < y + vh && f.top + f.h > y;
+        const p = (y + vh - f.top) / (vh + f.h);
+        f.el.style.transform = !reduce && near ? `translate3d(${((0.5 - p) * 40).toFixed(1)}px, 0, 0)` : "";
+      }
+    };
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      parallax(y, window.innerHeight);
+      const t = y + TARGET * window.innerHeight;
+      lastT = t;
+      const next = targetBeat(map, t);
+      if (next !== target) direction = next > target ? 1 : -1;
+      target = next;
+      start();
+    };
+
     const remeasure = () => {
       measure();
-      schedule();
+      onScroll();
     };
 
     // Panels "power on" as they enter the viewport; reset when they drop below it.
@@ -324,114 +430,83 @@ export function JourneyController() {
       },
       { rootMargin: "0px 0px -6% 0px" },
     );
-    const anchorEls = Array.from(root.querySelectorAll<HTMLElement>("[data-anchor]"));
+    const anchorEls = () => Array.from(root.querySelectorAll<HTMLElement>("[data-anchor]"));
+    // Dungeon rooms are marked visited once seen (stays lit).
+    const visitIo = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && ((e.target as HTMLElement).dataset.visited = "true")),
+      { rootMargin: "0px 0px -20% 0px" },
+    );
+    root.querySelectorAll("[data-visit]").forEach((el) => visitIo.observe(el));
 
     const applyMotionMode = () => {
       const reduce = reduceMq.matches;
       html.dataset.journey = reduce ? "still" : "motion";
-      if (reduce) {
-        io.disconnect();
-        anchorEls.forEach((el) => delete el.dataset.shown);
-      } else {
-        anchorEls.forEach((el) => io.observe(el));
-      }
+      io.disconnect();
+      if (reduce) anchorEls().forEach((el) => delete el.dataset.shown);
+      else anchorEls().forEach((el) => io.observe(el));
     };
 
     measure();
     applyMotionMode();
-    update();
+    // Start where the visitor already is (deep link / restored scroll): no replay.
+    lastT = window.scrollY + TARGET * window.innerHeight;
+    target = targetBeat(map, lastT);
+    displayed = target;
+    render(performance.now());
 
     const onMotionChange = () => {
       applyMotionMode();
       remeasure();
     };
+    let measureFrame = 0;
+    const scheduleMeasure = () => {
+      if (!measureFrame)
+        measureFrame = requestAnimationFrame(() => {
+          measureFrame = 0;
+          remeasure();
+        });
+    };
 
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", remeasure);
-    window.addEventListener("pageshow", remeasure); // back/forward cache restores
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", scheduleMeasure);
+    window.addEventListener("pageshow", scheduleMeasure);
     reduceMq.addEventListener("change", onMotionChange);
-    compactMq.addEventListener("change", remeasure);
-    laneMq.addEventListener("change", remeasure);
-    // Content height changes (filters, fonts, <details>) move bands and ledges.
-    const ro = new ResizeObserver(remeasure);
+    const offTracks = onTracksChange(scheduleMeasure);
+    const ro = new ResizeObserver(scheduleMeasure);
     ro.observe(root);
 
     return () => {
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", remeasure);
-      window.removeEventListener("pageshow", remeasure);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", scheduleMeasure);
+      window.removeEventListener("pageshow", scheduleMeasure);
       reduceMq.removeEventListener("change", onMotionChange);
-      compactMq.removeEventListener("change", remeasure);
-      laneMq.removeEventListener("change", remeasure);
+      offTracks();
       ro.disconnect();
       io.disconnect();
+      visitIo.disconnect();
       if (frameId) cancelAnimationFrame(frameId);
+      if (measureFrame) cancelAnimationFrame(measureFrame);
       delete html.dataset.journey;
-      anchorEls.forEach((el) => delete el.dataset.shown);
-      bands.forEach((b) => b.section && delete b.section.dataset.arrived);
+      anchorEls().forEach((el) => delete el.dataset.shown);
+      tracks.forEach((t) => t.handle.section && delete t.handle.section.dataset.arrived);
     };
   }, []);
 
   return (
     <>
-      {lanes.map((l) => (
-        <LaneScenery
-          key={l.id}
-          view={l}
-          register={(el) => {
-            if (el) laneElsRef.current.set(l.id, el);
-            else laneElsRef.current.delete(l.id);
-          }}
-        />
-      ))}
+      <div ref={warpRef} className={styles.warpMini} data-show="false" aria-hidden="true">
+        <svg viewBox="0 0 18 10" width="100%" height="100%" shapeRendering="crispEdges" preserveAspectRatio="none">
+          <rect x={0} y={0} width={18} height={4} fill={PIPE.base} />
+          <rect x={0} y={0} width={18} height={1} fill={PIPE.outline} />
+          <rect x={1} y={1} width={16} height={1} fill={PIPE.mouth} />
+          <rect x={2} y={2} width={2} height={2} fill={PIPE.highlight} />
+          <rect x={1} y={4} width={16} height={6} fill={PIPE.base} />
+          <rect x={2} y={4} width={2} height={6} fill={PIPE.light} />
+          <rect x={13} y={4} width={3} height={6} fill={PIPE.shadow} />
+        </svg>
+      </div>
       <div ref={charRef} className={styles.character} data-visible="false" aria-hidden="true">
         <div ref={spriteRef} className={styles.sprite} style={{ backgroundImage: SHEET }} />
-      </div>
-    </>
-  );
-}
-
-/** Ledges, pipes and girders of one lane (decorative, desktop only). */
-function LaneScenery({ view, register }: { view: LaneView; register: (el: HTMLDivElement | null) => void }) {
-  const { lane, scale: s } = view;
-  const ns = `lane-${view.id}`;
-  return (
-    <>
-      {view.beams.map((b, i) => (
-        <div key={i} className={styles.beam} style={{ left: b.left, top: b.top, width: b.width, height: b.height }} aria-hidden="true" />
-      ))}
-      <div ref={register} className={styles.lane} style={{ left: view.left, top: view.top }} aria-hidden="true">
-        <svg
-          width={lane.width * s}
-          height={lane.height * s}
-          viewBox={`0 0 ${lane.width} ${lane.height}`}
-          shapeRendering="crispEdges"
-          focusable="false"
-        >
-          <PlatformPatterns ns={ns} />
-          {lane.ledges.map((l, i) => (
-            <g key={i}>
-              {l.anchored && (
-                // Bracket bolting the ledge to the content edge
-                <>
-                  <rect x={l.x0} y={l.y + 4} width={2} height={6} fill="#3a4454" />
-                  <rect x={l.x0 + 2} y={l.y + 4} width={2} height={3} fill="#3a4454" />
-                </>
-              )}
-              {!l.anchored && i !== lane.ledges.length - 1 && (
-                // Chain hanging the outer ledge from above
-                <rect x={l.x1 - 4} y={l.y - 14} width={1} height={14} fill="#2c3542" />
-              )}
-              <PixelPlatform
-                p={{ x: l.x0, y: l.y, w: l.x1 - l.x0, h: 4, kind: l.anchored ? "metal" : "block" }}
-                floor={lane.height}
-                ns={ns}
-              />
-            </g>
-          ))}
-          <WarpPipe pipe={lane.exitPipe} floor={lane.ledges[0].y} role="exit" />
-          <WarpPipe pipe={lane.entryPipe} floor={lane.ledges[lane.ledges.length - 1].y} role="entry" />
-        </svg>
       </div>
     </>
   );

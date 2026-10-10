@@ -12,6 +12,7 @@ import {
   ICON_TREE,
 } from "@/components/pixel/sprites";
 import { RovingGrid } from "./RovingGrid";
+import { Corridor } from "@/components/journey/Corridor";
 import styles from "./WorldSelect.module.css";
 
 // Head-and-shoulders crop of the canonical character, eyes merged in.
@@ -98,6 +99,8 @@ export function WorldSelect() {
             </li>
           ))}
         </RovingGrid>
+        {/* Overworld path: the character walks node to node under the rooms. */}
+        <Corridor id="overworld" world={1} label="Overworld" theme="map" stopSelector="[data-anchor]" stopKind="node" />
       </div>
     </section>
   );
