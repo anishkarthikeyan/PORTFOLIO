@@ -31,7 +31,7 @@ export function Dsa() {
         {profiles.length > 0 && (
           <ul className={styles.cards2}>
             {profiles.map((p) => (
-              <li key={p.platform} className={`panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
+              <li key={p.platform} data-anchor className={`panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
                 <p className={styles.cardTop}>
                   <span className={styles.cardTitle}>{p.platform}</span>
                   <StatusBadge status={p.status} />
@@ -76,7 +76,7 @@ export function Dsa() {
             <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
               Each topic links to evidence once added — practiced problems, write-ups, or contest submissions.
             </p>
-            <ul className={styles.topicGrid}>
+            <ul className={styles.topicGrid} data-anchor>
               {topics.map((t) => (
                 <li key={t.topic} className={styles.topic} data-has-evidence={Boolean(t.evidence)}>
                   <span className={styles.topicName}>{t.topic}</span>
@@ -92,7 +92,7 @@ export function Dsa() {
             <h3 className={styles.h3}>Representative problems</h3>
             <ul className={styles.cards3}>
               {problems.map((p) => (
-                <li key={p.title} className={`panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
+                <li key={p.title} data-anchor className={`panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
                   <p className={styles.cardTop}>
                     <span className="chip">{p.pattern}</span>
                     <StatusBadge status={p.status} />

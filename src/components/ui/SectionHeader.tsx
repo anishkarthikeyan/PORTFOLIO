@@ -10,7 +10,7 @@ interface SectionHeaderProps {
 /** Shared section heading. `id` is applied to the h2 for aria-labelledby. */
 export function SectionHeader({ id, index, eyebrow, title, lede, children }: SectionHeaderProps) {
   return (
-    <header className="section-head">
+    <header className="section-head" data-reveal>
       <p className="eyebrow">
         <span aria-hidden="true">{index} — </span>
         {eyebrow}

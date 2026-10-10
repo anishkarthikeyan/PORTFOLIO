@@ -1,0 +1,347 @@
+/* ==========================================================================
+   Scroll journey — world bands, warp pipes, and the travelling character
+   ========================================================================== */
+
+.root {
+  position: relative;
+}
+
+/* ---------- World band ---------- */
+
+.band {
+  --band-bg: #0d1116;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 50% 90% at 50% 100%, color-mix(in srgb, var(--world-accent) 9%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--void) 0%, var(--band-bg) 100%);
+  border-top: 1px solid var(--line);
+}
+
+.stage {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 1600px;
+  height: auto;
+  margin-inline: auto;
+  overflow: visible;
+}
+
+.stageCompact,
+.farCompact {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .stageWide,
+  .farWide {
+    display: none;
+  }
+  .stageCompact,
+  .farCompact {
+    display: block;
+  }
+}
+
+.farWrap {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.farWide,
+.farCompact {
+  position: absolute;
+  inset: 0 -2%;
+}
+.far {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.worldTitle {
+  fill: var(--text-3);
+  font-family: var(--font-pixel);
+  font-size: 4px;
+  letter-spacing: 0.3px;
+}
+
+.tag rect {
+  fill: var(--void-deep);
+  stroke: var(--world-accent);
+  stroke-width: 0.4;
+}
+.tag text,
+.pipeSign text {
+  fill: var(--text);
+  font-family: var(--font-mono);
+  font-size: 3.6px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.pipeSign rect {
+  fill: #12301a;
+  stroke: #58a85c;
+  stroke-width: 0.4;
+}
+.flagText {
+  fill: var(--void);
+  font-family: var(--font-pixel);
+  font-size: 3.4px;
+}
+
+.knock {
+  fill: var(--band-bg);
+}
+
+/* ---------- Pipe travel puff (driven by --puff-* from the controller) ---------- */
+
+.puffExit,
+.puffEntry {
+  fill: #dfe7ef;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+.puffExit {
+  opacity: var(--puff-exit, 0);
+  transform: translateY(calc(var(--puff-exit, 0) * -2px)) scale(calc(0.6 + var(--puff-exit, 0) * 0.6));
+}
+.puffEntry {
+  opacity: var(--puff-entry, 0);
+  transform: translateY(calc(var(--puff-entry, 0) * -2px)) scale(calc(0.6 + var(--puff-entry, 0) * 0.6));
+}
+
+/* ---------- Ambient scenery animation (only in the band near the viewport) ---------- */
+
+.led,
+.flag,
+.portalGlow,
+.screenLine {
+  animation-play-state: paused;
+}
+.band[data-active="true"] .led,
+.band[data-active="true"] .flag,
+.band[data-active="true"] .portalGlow,
+.band[data-active="true"] .screenLine {
+  animation-play-state: running;
+}
+
+.led {
+  animation: led 2.4s steps(1) infinite;
+}
+@keyframes led {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  61%,
+  100% {
+    opacity: 0.35;
+  }
+}
+
+.flag {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: flag 1.6s steps(2) infinite;
+}
+@keyframes flag {
+  50% {
+    transform: scaleY(0.86);
+  }
+}
+
+.portalGlow {
+  animation: glow 3s ease-in-out infinite;
+}
+@keyframes glow {
+  50% {
+    opacity: 0.16;
+  }
+}
+
+.screenLine {
+  animation: led 1.2s steps(1) infinite;
+}
+
+/* ---------- Character ---------- */
+
+.character {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  will-change: transform;
+  transition: opacity 160ms var(--ease);
+}
+.character[data-visible="false"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.sprite {
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-position: var(--fx, 0) 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 1px rgba(132, 155, 184, 0.25));
+}
+
+/* Blink only while idle (stops automatically in every other state). */
+.character[data-frame="idle"] .sprite {
+  animation: blink 4.2s steps(1) infinite;
+}
+@keyframes blink {
+  0%,
+  94% {
+    background-position: var(--fx, 0) 0;
+  }
+  95%,
+  98% {
+    background-position: var(--fx-blink, 0) 0;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .led,
+  .flag,
+  .portalGlow,
+  .screenLine,
+  .character[data-frame="idle"] .sprite {
+    animation: none;
+  }
+  .farWrap {
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   World zones — the environment continues behind the content
+   ========================================================================== */
+
+.zone {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Content sits above the scenery; section backgrounds become see-through. */
+.zone > :global(section),
+.zone > .band {
+  position: relative;
+  z-index: 1;
+}
+.zone > :global(section) {
+  background: transparent;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 28% at 50% 0%, color-mix(in srgb, var(--world-accent) 7%, transparent), transparent 75%),
+    radial-gradient(ellipse 60% 22% at 50% 100%, color-mix(in srgb, var(--world-accent) 8%, transparent), transparent 75%);
+}
+
+/* Pixel starfield (static image, moved by the controller for parallax) */
+.stars {
+  position: absolute;
+  inset: -12% 0;
+  opacity: 0.85;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' shape-rendering='crispEdges'%3E%3Cg fill='%23849bb8'%3E%3Crect x='14' y='22' width='2' height='2' opacity='.5'/%3E%3Crect x='96' y='8' width='2' height='2' opacity='.3'/%3E%3Crect x='150' y='60' width='2' height='2' opacity='.45'/%3E%3Crect x='40' y='118' width='2' height='2' opacity='.3'/%3E%3Crect x='122' y='150' width='4' height='4' opacity='.18'/%3E%3Crect x='178' y='132' width='2' height='2' opacity='.4'/%3E%3Crect x='70' y='176' width='2' height='2' opacity='.25'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 192px 192px;
+  will-change: transform;
+}
+
+.horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  height: 160px;
+  opacity: 0.55;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 60%);
+  mask-image: linear-gradient(180deg, transparent, #000 60%);
+}
+.horizon .far {
+  height: 100%;
+}
+
+/* Pixel ground at the end of each world */
+.ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 12px;
+  background:
+    linear-gradient(180deg, var(--steel-dim) 0 2px, #2a313c 2px 4px, transparent 4px),
+    repeating-linear-gradient(90deg, #1a1f27 0 22px, #141920 22px 24px),
+    #1a1f27;
+}
+
+/* Brick pillar framing the left side of the world (wide screens) */
+@media (min-width: 1100px) {
+  .backdrop::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 12px;
+    left: max(6px, calc((100vw - var(--container)) / 2 - 34px));
+    width: 20px;
+    opacity: 0.6;
+    background:
+      linear-gradient(90deg, #2a313c 0 2px, transparent 2px calc(100% - 3px), #0b0e12 calc(100% - 3px)),
+      repeating-linear-gradient(180deg, transparent 0 10px, #0d1116 10px 12px),
+      linear-gradient(90deg, #1d232c, #161b22);
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+    mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+  }
+}
+
+/* ---------- Lane (desktop): room for the descending character ---------- */
+
+@media (min-width: 1100px) {
+  .zone :global(.container) {
+    /* Guarantee ≥ 188px of right margin for the ledge lane. */
+    padding-right: max(var(--gutter), calc(var(--gutter) + 140px - (100vw - var(--container)) / 2));
+  }
+}
+
+.lane {
+  --band-bg: transparent;
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+.lane svg {
+  display: block;
+  overflow: visible;
+}
+
+.beam {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, #5c6f88 0 2px, #2c3542 2px calc(100% - 2px), #161b22 calc(100% - 2px)),
+    #2c3542;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%);
+  mask-image: linear-gradient(90deg, transparent, #000 40%);
+  opacity: 0.8;
+}
+
+@media (max-width: 1099px) {
+  .lane,
+  .beam {
+    display: none;
+  }
+}

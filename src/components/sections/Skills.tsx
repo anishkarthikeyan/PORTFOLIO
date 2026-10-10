@@ -30,7 +30,7 @@ export function Skills() {
 
         <ol className={styles.tree}>
           {categories.map((c, i) => (
-            <li key={c.id} className={styles.branch}>
+            <li key={c.id} className={styles.branch} data-anchor>
               <div className={styles.branchHead}>
                 <span className={styles.branchNode} aria-hidden="true">
                   {String(i + 1).padStart(2, "0")}

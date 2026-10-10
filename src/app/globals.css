@@ -491,3 +491,32 @@ button {
     justify-content: center;
   }
 }
+
+/* ---------- Journey: coordinated heading reveal ----------
+   Only applies once the journey controller is running with motion enabled
+   (html[data-journey="motion"]); without JS or with reduced motion,
+   headings are always fully visible. Never fully hidden. */
+[data-reveal] {
+  transition:
+    opacity 420ms var(--ease),
+    transform 420ms var(--ease);
+}
+html[data-journey="motion"] [data-arrived="false"] [data-reveal] {
+  opacity: 0.4;
+  transform: translateY(10px);
+}
+
+/* ---------- Journey: panels "power on" as they enter the world ----------
+   Only while the controller runs with motion enabled; reverses when the
+   panel drops back below the viewport. Without JS: always visible. */
+html[data-journey="motion"] [data-anchor] {
+  transition:
+    opacity 420ms steps(5),
+    transform 420ms steps(5),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+html[data-journey="motion"] [data-anchor]:not([data-shown="true"]) {
+  opacity: 0;
+  transform: translateY(18px);
+}

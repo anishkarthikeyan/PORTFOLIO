@@ -35,7 +35,7 @@ export function SystemDesign() {
 
         <div className={styles.designList}>
           {designs.map((d) => (
-            <article key={d.slug} className={`panel ${styles.design}`} aria-labelledby={`sd-${d.slug}`}>
+            <article key={d.slug} data-anchor className={`panel ${styles.design}`} aria-labelledby={`sd-${d.slug}`}>
               <header className={styles.designHead}>
                 <h3 id={`sd-${d.slug}`} className={styles.h3}>
                   {d.title}

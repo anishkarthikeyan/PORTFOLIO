@@ -10,6 +10,7 @@ export function ProjectCard({ project }: { project: Project }) {
   const headingId = `card-${p.slug}`;
   return (
     <article
+      data-anchor
       className={`${styles.card} ${p.status === "sample" ? styles.cardSample : ""}`}
       data-track={p.track}
       aria-labelledby={headingId}

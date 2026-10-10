@@ -18,7 +18,7 @@ export function Profile() {
         <div className={styles.profileGrid}>
           <SummarySwitch sde={profile.summaries.sde} aiml={profile.summaries.aiml} />
 
-          <aside className={`panel notched ${styles.statCard}`} aria-label="Profile facts">
+          <aside data-anchor className={`panel notched ${styles.statCard}`} aria-label="Profile facts">
             <p className={styles.statHead}>
               <span className="pixel">PLAYER.STATS</span>
             </p>
@@ -75,7 +75,7 @@ export function Profile() {
             <h3 className={styles.h3}>Engineering philosophy</h3>
             <ul className={styles.cards3}>
               {philosophy.map((p) => (
-                <li key={p.title} className={`panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
+                <li key={p.title} data-anchor className={`panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
                   <p className={styles.cardTop}>
                     <span className={styles.cardTitle}>{p.title}</span>
                     <StatusBadge status={p.status} />

@@ -35,7 +35,7 @@ export function Education() {
         <SectionHeader id="education-title" index="07" eyebrow="Education" title="Education" />
         <ul className={styles.eduList}>
           {education.map((e) => (
-            <li key={e.institution} className={`panel notched ${styles.eduCard}`}>
+            <li key={e.institution} data-anchor className={`panel notched ${styles.eduCard}`}>
               <div className={styles.eduIcon} aria-hidden="true">
                 <span className="pixel">B.E</span>
               </div>

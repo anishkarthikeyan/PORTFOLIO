@@ -14,7 +14,7 @@ export function Contact() {
   return (
     <section id="contact" className="section" aria-labelledby="contact-title">
       <div className="container">
-        <div className={`panel ${styles.portal}`}>
+        <div data-anchor className={`panel ${styles.portal}`}>
           <div className={styles.portalArt} aria-hidden="true">
             <PixelSprite rows={ICON_PORTAL} palette={ICON_PORTAL_PALETTE} scale={6} />
           </div>

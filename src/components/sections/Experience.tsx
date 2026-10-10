@@ -29,7 +29,7 @@ export function Experience() {
         ) : (
           <ol className={styles.timeline}>
             {entries.map((e) => (
-              <li key={`${e.organization}-${e.role}`} className={styles.timelineItem}>
+              <li key={`${e.organization}-${e.role}`} className={styles.timelineItem} data-anchor>
                 <span className={styles.timelineDot} aria-hidden="true" />
                 <article className={`panel ${e.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
                   <header className={styles.expHead}>

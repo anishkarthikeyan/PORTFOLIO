@@ -134,6 +134,25 @@
   margin-left: calc(-1 * var(--s-3));
 }
 
+.scrollCue {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.scrollArrow {
+  color: var(--steel);
+  animation: bob 1.6s steps(2) infinite;
+}
+@keyframes bob {
+  50% {
+    transform: translateY(3px);
+  }
+}
+
 .sceneWrap {
   grid-area: scene;
   overflow: hidden;

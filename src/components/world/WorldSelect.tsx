@@ -69,7 +69,7 @@ export function WorldSelect() {
   return (
     <section id="world" className={styles.section} aria-labelledby="world-title">
       <div className="container">
-        <div className={styles.head}>
+        <div className={styles.head} data-reveal>
           <p className="eyebrow">World select</p>
           <h2 id="world-title" className={styles.title}>
             Choose a destination
@@ -82,7 +82,7 @@ export function WorldSelect() {
 
         <RovingGrid className={styles.grid} label="World destinations">
           {WORLDS.map((w) => (
-            <li key={w.id}>
+            <li key={w.id} data-anchor>
               <a href={w.href} className={styles.room} data-world={w.id}>
                 <span className={styles.roomNo}>ROOM {w.room}</span>
                 <span className={styles.stage} aria-hidden="true">

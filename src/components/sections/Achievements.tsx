@@ -30,7 +30,7 @@ export function Achievements() {
         <ul className={styles.cards3}>
           {groups.flatMap((g) =>
             g.items.map((a) => (
-              <li key={a.title} className={`panel ${a.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
+              <li key={a.title} data-anchor className={`panel ${a.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>
                 <p className={styles.cardTop}>
                   <span className="chip">{a.kind}</span>
                   <StatusBadge status={a.status} />

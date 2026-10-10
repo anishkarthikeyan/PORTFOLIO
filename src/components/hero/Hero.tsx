@@ -67,6 +67,12 @@ export function Hero() {
               <span aria-hidden="true">&gt;_</span> Terminal
             </TerminalButton>
           </div>
+          <p className={styles.scrollCue}>
+            <span className={styles.scrollArrow} aria-hidden="true">
+              ▼
+            </span>
+            Scroll to follow the journey — or jump anywhere with the menu.
+          </p>
         </div>
         <div className={styles.sceneWrap}>
           <div className={styles.sceneWide}>
