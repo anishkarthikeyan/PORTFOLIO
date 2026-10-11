@@ -64,11 +64,11 @@ describe("chase", () => {
     if ("beat" in r) expect(r.beat - 1).toBeLessThan(0.2);
   });
 
-  it("catches up within about a second, sprinting when far behind", () => {
+  it("catches up within one to two seconds, sprinting when far behind", () => {
     for (const gap of [3, 6, 10]) {
       const r = run(1, 1 + gap, 3);
       expect(r.warped, `gap ${gap}`).toBe(false);
-      expect(r.frames / 60, `gap ${gap}`).toBeLessThan(1.6);
+      expect(r.frames / 60, `gap ${gap}`).toBeLessThan(2.2);
     }
     const r = chaseStep(map, 1, 11, 1 / 60);
     expect("speed" in r && r.speed).toBeGreaterThan(CHASE.sprintAt);

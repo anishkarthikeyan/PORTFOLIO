@@ -33,6 +33,7 @@ export function Achievements() {
           world={5}
           label="Trophy room"
           theme="trophy"
+          extras={[{ at: 0.06, kind: "power", block: { id: "starpower", power: "star", label: "STAR POWER" } }]}
           stopSelector="[data-unlock-id^='tr-']"
           blocks={groups
             .flatMap((g) => g.items)

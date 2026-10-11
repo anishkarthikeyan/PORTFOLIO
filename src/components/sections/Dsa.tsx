@@ -5,6 +5,9 @@ import { ReplaceMe, SampleNotice, StatusBadge, ValueOr } from "@/components/ui/S
 import { Corridor } from "@/components/journey/Corridor";
 import styles from "./sections.module.css";
 
+/** Muted tetromino colors for the topic tiles (Tetris-style drop-in). */
+const TETRO = ["#5aa9b8", "#d9b26f", "#9a7ac0", "#62b06a", "#c86b5e", "#6b86c8", "#d0894f"];
+
 export function Dsa() {
   const profiles = visible(codingProfiles);
   const topics = visible(dsaTopics);
@@ -77,9 +80,15 @@ export function Dsa() {
             <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
               Each topic links to evidence once added — practiced problems, write-ups, or contest submissions.
             </p>
-            <ul className={styles.topicGrid} data-anchor>
-              {topics.map((t) => (
-                <li key={t.topic} className={styles.topic} data-has-evidence={Boolean(t.evidence)} data-visit>
+            <ul className={styles.topicGrid} data-anchor data-tetris>
+              {topics.map((t, i) => (
+                <li
+                  key={t.topic}
+                  className={styles.topic}
+                  data-has-evidence={Boolean(t.evidence)}
+                  data-visit
+                  style={{ "--i": i, "--tc": TETRO[i % TETRO.length] } as React.CSSProperties}
+                >
                   <span className={styles.roomLabel} aria-hidden="true">
                     Room
                   </span>

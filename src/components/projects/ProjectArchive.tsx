@@ -42,6 +42,7 @@ export function ProjectArchive() {
               key: p.slug,
               track: p.track,
               highlight: p.highlight,
+              problem: p.problem,
               node: <ProjectCard project={p} level={`2-${i + 1}`} />,
             }))}
           />

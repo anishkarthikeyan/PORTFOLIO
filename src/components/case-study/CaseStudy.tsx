@@ -3,6 +3,8 @@ import type { AimlProject, Evidence, MaybeApplicable, Project, SdeProject } from
 import { getProjects, isNotApplicable, PHASE_LABEL, TRACK_LABEL } from "@/lib/content";
 import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
 import { DevPlaceholder, ReplaceMe, SampleNotice, StatusBadge } from "@/components/ui/Status";
+import { LevelLink } from "@/components/level/LevelLink";
+import { Checkpoints } from "@/components/level/Checkpoints";
 import styles from "./CaseStudy.module.css";
 
 /* ---------------------------- building blocks ---------------------------- */
@@ -416,15 +418,16 @@ export function CaseStudy({ project: p }: { project: Project }) {
     <article className={styles.page} aria-labelledby="cs-title">
       <div className="container">
         <nav aria-label="Breadcrumb" className={styles.crumbs}>
-          <Link href="/#projects" className="text-link">
-            ← Project archive
-          </Link>
+          <LevelLink href="/#projects" mode="exit" className="text-link">
+            ← Exit level · Project archive
+          </LevelLink>
           <span aria-hidden="true">/</span>
           <span aria-current="page">{p.slug}</span>
         </nav>
 
         <header className={styles.header}>
           <div className={styles.metaRow}>
+            <span className={styles.levelTag}>Level 2-{idx + 1}</span>
             <span className={styles.track}>{TRACK_LABEL[p.track]}</span>
             <span className="chip">Status: {PHASE_LABEL[p.phase]}</span>
             <StatusBadge status={p.status} label={p.status === "sample" ? "Sample case study" : undefined} />
@@ -480,13 +483,16 @@ export function CaseStudy({ project: p }: { project: Project }) {
           </dl>
         </header>
 
+        <Checkpoints ids={[...toc.map((t) => t.id), "results", "limitations", "next"].filter((v, i, a) => a.indexOf(v) === i)} />
         <div className={styles.layout}>
           <nav className={styles.toc} aria-label="Case study sections">
             <p className={styles.tocTitle}>Contents</p>
             <ol>
               {toc.map((t) => (
                 <li key={t.id}>
-                  <a href={`#${t.id}`}>{t.label}</a>
+                  <a href={`#${t.id}`} data-checkpoint={t.id}>
+                    {t.label}
+                  </a>
                 </li>
               ))}
             </ol>

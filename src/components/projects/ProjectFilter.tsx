@@ -21,7 +21,7 @@ export function ProjectFilter({
   items,
   counts,
 }: {
-  items: { track: Track; key: string; highlight: string; node: React.ReactNode }[];
+  items: { track: Track; key: string; highlight: string; problem: string; node: React.ReactNode }[];
   counts: Record<Filter, number>;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -69,9 +69,18 @@ export function ProjectFilter({
               theme="island"
               sign={track === "sde" ? "SDE ISLAND" : "AI/ML ISLAND"}
               stopSelector="[data-anchor]"
+              extras={
+                track === "sde"
+                  ? [
+                      { at: 0.12, kind: "power", block: { id: "coffee", power: "coffee", label: "COFFEE BOOST" } },
+                      { at: 0.5, kind: "bug" },
+                    ]
+                  : [{ at: 0.5, kind: "bug" }]
+              }
               blocks={group.map((i) => ({
                 id: `hl-${i.key}`,
                 unlock: `hl-${i.key}`,
+                say: i.problem.length > 110 ? `${i.problem.slice(0, 108)}…` : i.problem,
                 label: i.highlight.length > 90 ? `${i.highlight.slice(0, 88)}…` : i.highlight,
               }))}
             />

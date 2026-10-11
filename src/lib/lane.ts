@@ -55,7 +55,8 @@ export interface Lane {
  * space is too narrow or too short.
  */
 export function buildLane(input: { width: number; height: number; anchors: number[] }): Lane | null {
-  const W = Math.min(input.width, LANE.maxWidth);
+  // Snap sub-pixel measurement error (35.99… → 36) before comparing.
+  const W = Math.min(Math.floor(input.width + 0.01), LANE.maxWidth);
   const H = input.height;
   if (W < LANE.minWidth) return null;
 

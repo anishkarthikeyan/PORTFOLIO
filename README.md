@@ -121,6 +121,26 @@ One pixel character travels through the whole home page. Every section is part o
 - **Work only happens while the character is moving.** Nothing runs while idle.
 - **Each track measures itself** from the real layout (`useTrack`) and registers with the single `JourneyController`. "?" blocks line up with the cards they unlock.
 
+**Each world plays differently** (original art; inspired by classic games)
+
+| World | Mechanic |
+| --- | --- |
+| Projects | Bugs to stomp, a coffee power-up (glow), "?" blocks per project; "Enter level" opens a case study as a level |
+| About | Pac-Man dots, power pellets per interest, a ghost that turns blue |
+| Skill tree | Climb the trunk via vines and knot holes, collecting leaf coins and acorns |
+| DSA | Topic tiles drop in Tetris-style, with lock sounds and a line clear |
+| System design | Jetpack power-up: fly past zappers collecting coins (first machine), conveyor rides after |
+| Education / Achievements | Elevator floors, castle battlements with bugs, star power in the trophy room |
+| Contact | Stair bricks → star → journey summary → flagpole → portal |
+
+**Game layer**
+- **Title screen:** "Press Start" appears once per browser. Start turns sound on; Skip stays silent. It never appears for reduced motion or links to a section.
+- **Header:** six world tiles, each a real section link labelled with its section name. The current and visited worlds are highlighted.
+- **World map:** **Map** (or the M key) opens a pause screen showing all worlds and the sections inside each. The in-page world map uses the same component.
+- **Reactions:** the nearest panel glows with a "!", and section headings are signposts. The character speaks real lines from the data, such as the project problem, beside itself and inside its track.
+- **Case studies:** each shows a level tag, an "Exit level" link, checkpoint flags in the contents, and a level-progress bar.
+- **Sound** (`src/lib/sfx.ts`): synthesized in the browser, with no audio files. Includes coin, jump, "?" bump, stomp, pipe, power-up, waka, Tetris lock, jetpack, flagpole and start sounds. The speaker button in the header toggles it.
+
 **Game score is separate from portfolio content**
 - The HUD strip under the header shows POINTS, blocks, DISTANCE and the current WORLD.
 - Values last for the session only.

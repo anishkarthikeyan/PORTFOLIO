@@ -6,6 +6,7 @@ import { compileRoute, restState, standingBeat, stateAtBeat, type CharacterState
 import { buildJourneyMap, CHASE, chaseStep, crossedEvents, locate, targetBeat, type JourneyMap, type TrackWindow } from "@/lib/chase";
 import { buildHeroSheet, HERO_FRAME_INDEX, HERO_FRAME_ORDER, HERO_H, HERO_W } from "./heroSprite";
 import { getTracks, onTracksChange, type TrackHandle } from "./registry";
+import { play } from "@/lib/sfx";
 import { PIPE } from "./WarpPipe";
 import styles from "./Journey.module.css";
 
@@ -34,7 +35,7 @@ interface MeasuredTrack {
 
 interface GlobalEvent {
   beat: number;
-  kind: "block" | "item";
+  kind: "block" | "item" | "stomp" | "coin";
   id: string;
   track: number;
 }
@@ -59,13 +60,18 @@ export function JourneyController() {
   const charRef = useRef<HTMLDivElement>(null);
   const spriteRef = useRef<HTMLDivElement>(null);
   const warpRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const nearRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const char = charRef.current;
     const sprite = spriteRef.current;
     const warpPipe = warpRef.current;
+    const bubble = bubbleRef.current;
+    const bubbleText = bubble?.querySelector("span");
+    const nearMark = nearRef.current;
     const root = char?.parentElement;
-    if (!char || !sprite || !warpPipe || !root) return;
+    if (!char || !sprite || !warpPipe || !root || !bubble || !bubbleText || !nearMark) return;
 
     const html = document.documentElement;
     const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -101,6 +107,17 @@ export function JourneyController() {
     const collected = new Set<string>();
     const visited = new Set<number>();
     let warp: { phase: "sink" | "rise"; t0: number; to: number } | null = null;
+    /** Active power-up (lasts for the rest of the world it was found in). */
+    let power: { kind: "coffee" | "jetpack" | "star"; world: number } | null = null;
+    let hits = 0;
+    let coins = 0;
+    let lastSeg = "";
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let lastWorldKey = "";
+    let anchors: { el: HTMLElement; x: number; y: number; top: number; right: number }[] = [];
+    let near: HTMLElement | null = null;
+    let bubbleUntil = 0;
+    let lastWorldSaid = 0;
     let speed = 0;
 
     /* ------------------------------ measure ------------------------------ */
@@ -154,13 +171,27 @@ export function JourneyController() {
         far: Array.from(root.querySelectorAll<HTMLElement>("[data-far]")).map(box),
       };
 
+      // Panels that can react when the character is near.
+      anchors = Array.from(root.querySelectorAll<HTMLElement>("[data-anchor]"))
+        .filter((el) => !el.closest("[data-world-node]"))
+        .map((el) => {
+          const b = el.getBoundingClientRect();
+          return {
+            el,
+            x: b.left + b.width / 2 - rr.left,
+            y: b.top + sy - rootTop + b.height / 2,
+            top: b.top + sy - rootTop,
+            right: b.right - rr.left,
+          };
+        });
+
       map = buildJourneyMap(tracks.map((t) => t.window));
       // Keep `tracks` in map order.
       tracks = map.tracks.map((mt) => tracks.find((t) => t.window.id === mt.id)!);
       events = tracks.flatMap((t, i) =>
         t.route.events.map((e) => ({ beat: map.tracks[i].offset + e.beat, kind: e.kind, id: e.id, track: i })),
       );
-      totalBlocks = events.filter((e) => e.kind === "block").length;
+      totalBlocks = events.filter((e) => e.kind === "block" || e.kind === "stomp").length;
       // Re-apply collected blocks to freshly rendered scenery (no animation).
       collected.forEach((id) => {
         document.querySelectorAll<HTMLElement>(`[data-block-id="${id}"]`).forEach((b) => (b.dataset.hit = "done"));
@@ -221,7 +252,7 @@ export function JourneyController() {
       if (!hud) return;
       hud.dataset.show = started && !reduceMq.matches ? "true" : "false";
       if (hudScore) hudScore.textContent = pad(score, 6);
-      if (hudBlocks) hudBlocks.textContent = `×${pad(collected.size - (collected.has("star") ? 1 : 0), 2)}`;
+      if (hudBlocks) hudBlocks.textContent = `×${pad(coins, 2)}`;
       if (hudDistance) hudDistance.textContent = `${pad(distance / PX_PER_M, 4)}m`;
       if (hudWorld && active >= 0) {
         const h = tracks[active].handle;
@@ -240,7 +271,16 @@ export function JourneyController() {
       set("score", pad(score, 6));
       set("distance", `${pad(distance / PX_PER_M, 4)}m`);
       set("worlds", `${visited.size}/${new Set(tracks.map((t) => t.handle.world)).size}`);
-      set("blocks", `${collected.size - (collected.has("star") ? 1 : 0)}/${totalBlocks}`);
+      set("blocks", `${hits}/${totalBlocks}`);
+      set("coins", `${coins}`);
+    };
+
+    /** Show a speech bubble above the character for a moment. */
+    const say = (text: string, now = performance.now()) => {
+      if (reduceMq.matches) return;
+      bubbleText.textContent = text;
+      bubbleUntil = now + 2600;
+      start();
     };
 
     /** Award points, pop the coin, show the unlock pop-up, sparkle the item. */
@@ -249,13 +289,39 @@ export function JourneyController() {
       collected.add(e.id);
       const tr = tracks[e.track];
       const spec = tr?.handle.layout.blocks?.find((b) => b.id === e.id);
-      score += spec?.points ?? 100;
+      score += spec?.points ?? (e.kind === "coin" ? 10 : 100);
       document.querySelectorAll<HTMLElement>(`[data-block-id="${e.id}"]`).forEach((b) => (b.dataset.hit = "true"));
+      // Sound + bookkeeping per kind.
+      if (e.kind === "coin") {
+        coins++;
+        play(e.id.includes("-dot-") ? "waka" : "coin");
+      } else if (e.kind === "stomp") {
+        hits++;
+        play("stomp");
+      } else if (spec?.kind === "pellet") {
+        hits++;
+        coins++;
+        play("waka");
+        // Pac-Man: the ghost in this corridor gets scared.
+        document.querySelector(`[data-block-id="${e.id}"]`)?.closest("[data-track-stage]")?.setAttribute("data-scared", "true");
+      } else if (spec?.kind === "power" && spec.power) {
+        hits++;
+        power = { kind: spec.power, world: tr.handle.world };
+        play("bump");
+        play("powerup");
+      } else if (e.id === "star") {
+        play("powerup");
+      } else {
+        hits++;
+        play("bump");
+        play("coin");
+      }
       document.querySelectorAll<HTMLElement>(`[data-toast-for="${e.id}"]`).forEach((t) => (t.dataset.show = "true"));
+      if (spec?.say) say(spec.say);
       if (spec?.unlock) {
         document.querySelectorAll<HTMLElement>(`[data-unlock-id="${spec.unlock}"]`).forEach((u) => (u.dataset.unlocked = "true"));
       }
-      hud?.setAttribute("data-bump", String(Date.now() % 2));
+      if (e.kind !== "coin") hud?.setAttribute("data-bump", String(Date.now() % 2));
       if (e.id === "star") fillSummary();
     };
 
@@ -308,8 +374,82 @@ export function JourneyController() {
         warpPipe.dataset.show = "false";
       }
 
+      // Movement sounds when a new move starts; power-up looks.
+      const segIdx = tr.route.segments.findIndex((sg) => local >= sg.b0 && local < sg.b1);
+      const seg = tr.route.segments[segIdx];
+      const segKey = `${index}:${segIdx}`;
+      if (seg && segKey !== lastSeg && !warp && !reduce) {
+        const k = seg.step.kind;
+        if (k === "jump" && !("stomp" in seg.step && seg.step.stomp)) play("jump");
+        else if (k === "emerge" || k === "enter") play("pipe");
+        else if (k === "fly") play("jetpack");
+        else if (k === "slide") play("flag");
+      }
+      lastSeg = segKey;
+      if (power && power.world !== tr.handle.world) power = null;
+      char.dataset.power = power && !reduce ? power.kind : "";
+      char.dataset.flying = seg?.step.kind === "fly" ? "true" : "false";
+
       place(state, tr, index, warpClip);
       setPuffs(index, state);
+
+      // World selector: current + visited worlds on header tiles and map nodes.
+      const worldKey = `${tr.handle.world}|${[...visited].sort().join(",")}`;
+      if (worldKey !== lastWorldKey) {
+        lastWorldKey = worldKey;
+        html.dataset.world = String(tr.handle.world);
+        document.querySelectorAll<HTMLElement>("[data-world-tile], [data-world-node]").forEach((el) => {
+          const w = Number(el.dataset.worldTile ?? el.dataset.worldNode);
+          el.dataset.current = w === tr.handle.world ? "true" : "false";
+          el.dataset.visited = visited.has(w) ? "true" : "false";
+        });
+        // The character announces each new world once.
+        if (tr.handle.world !== lastWorldSaid && started && !reduce) {
+          lastWorldSaid = tr.handle.world;
+          say(`World ${tr.handle.world}: ${tr.handle.label}!`, now);
+        }
+      }
+
+      // Panels near the character glow ("!"), so content reacts to the player.
+      const cx = tr.left + state.x * tr.scale;
+      const cy = tr.top + (state.y - 12) * tr.scale;
+      let best: (typeof anchors)[number] | null = null;
+      let bestD = 380;
+      if (state.visible && !reduce) {
+        for (const a of anchors) {
+          const d = Math.hypot((a.x - cx) * 0.5, a.y - cy);
+          if (d < bestD) {
+            bestD = d;
+            best = a;
+          }
+        }
+      }
+      if ((best?.el ?? null) !== near) {
+        if (near) delete near.dataset.near;
+        if (best) {
+          best.el.dataset.near = "true";
+          nearMark.style.transform = `translate3d(${(best.right - 30).toFixed(0)}px, ${(best.top - 14).toFixed(0)}px, 0)`;
+        }
+        nearMark.dataset.show = best ? "true" : "false";
+        near = best?.el ?? null;
+      }
+
+      // Speech bubble beside the character (head height, inside its track),
+      // only on wide horizontal tracks so it never covers content.
+      const roomy = tr.handle.mode === "span" && tr.handle.layout.width * tr.scale > 420;
+      if (now < bubbleUntil && state.visible && roomy) {
+        const w = root.clientWidth;
+        const charL = tr.left + (state.x - HERO_W / 2) * tr.scale;
+        const charR = charL + HERO_W * tr.scale;
+        const side = charR + 300 < w ? "right" : "left";
+        const left = side === "right" ? charR + 6 : charL - 6;
+        const top = tr.top + (state.y - HERO_H) * tr.scale + 4;
+        bubble.dataset.side = side;
+        bubble.style.transform = `translate3d(${left.toFixed(0)}px, ${top.toFixed(0)}px, 0)`;
+        bubble.dataset.show = "true";
+      } else {
+        bubble.dataset.show = "false";
+      }
       tr.handle.onBeat?.(local);
       // Coordinated heading reveal for the section a band introduces.
       tracks.forEach((t, i) => {
@@ -364,6 +504,7 @@ export function JourneyController() {
             return tracks[cur.index] ? stateAtBeat(tracks[cur.index].route, cur.local).visible : false;
           })();
           warp = { phase: visibleNow ? "sink" : "rise", t0: now, to: landing };
+          play("warp");
           if (!visibleNow) {
             crossedEvents(events, displayed, landing).forEach(collect);
             displayed = landing;
@@ -376,7 +517,7 @@ export function JourneyController() {
       }
 
       render(now);
-      const settled = !warp && Math.abs(target - displayed) < 1e-3;
+      const settled = !warp && Math.abs(target - displayed) < 1e-3 && now >= bubbleUntil;
       if (!settled) frameId = requestAnimationFrame(tick);
       else {
         lastTime = 0;
@@ -424,6 +565,10 @@ export function JourneyController() {
       (entries) => {
         for (const e of entries) {
           const el = e.target as HTMLElement;
+          if (e.isIntersecting && el.dataset.shown !== "true" && el.hasAttribute("data-tetris")) {
+            // Tetris: a lock click as each tile lands.
+            el.querySelectorAll("li").forEach((_, i) => timers.push(setTimeout(() => play("lock"), 420 + i * 90)));
+          }
           if (e.isIntersecting) el.dataset.shown = "true";
           else if (e.boundingClientRect.top > 0) el.dataset.shown = "false";
         }
@@ -484,10 +629,13 @@ export function JourneyController() {
       ro.disconnect();
       io.disconnect();
       visitIo.disconnect();
+      timers.forEach(clearTimeout);
       if (frameId) cancelAnimationFrame(frameId);
       if (measureFrame) cancelAnimationFrame(measureFrame);
       delete html.dataset.journey;
       anchorEls().forEach((el) => delete el.dataset.shown);
+      if (near) delete near.dataset.near;
+      delete html.dataset.world;
       tracks.forEach((t) => t.handle.section && delete t.handle.section.dataset.arrived);
     };
   }, []);
@@ -504,6 +652,12 @@ export function JourneyController() {
           <rect x={2} y={4} width={2} height={6} fill={PIPE.light} />
           <rect x={13} y={4} width={3} height={6} fill={PIPE.shadow} />
         </svg>
+      </div>
+      <div ref={nearRef} className={styles.nearMark} data-show="false" aria-hidden="true">
+        <span>!</span>
+      </div>
+      <div ref={bubbleRef} className={styles.bubble} data-show="false" aria-hidden="true">
+        <span />
       </div>
       <div ref={charRef} className={styles.character} data-visible="false" aria-hidden="true">
         <div ref={spriteRef} className={styles.sprite} style={{ backgroundImage: SHEET }} />

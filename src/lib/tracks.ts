@@ -13,9 +13,12 @@
  * Geometry is validated in tracks.test.ts.
  */
 import type { BlockSpec, PipeSpec, PlatformSpec, RouteStep, TrackLayout } from "@/data/worlds";
-import type { CompiledRoute } from "./journey";
+import { compileRoute, flyPoint, type CompiledRoute } from "./journey";
 
 export const BLOCK = 8;
+
+/** Measured sizes carry sub-pixel error (47.998…); snap before comparing. */
+const snap = (v: number) => Math.floor(v + 0.01);
 const PIPE_W = 18;
 /** Height of corridor pipes above the ground. */
 const PIPE_H = 8;
@@ -24,12 +27,21 @@ type BlockInput = Omit<BlockSpec, "x" | "y" | "kind" | "points"> & Partial<Pick<
 
 export interface CorridorStop {
   x: number;
-  kind: "block" | "node" | "pedestal";
+  /**
+   * block: "?" bumped from below · power: "?" that releases a power-up ·
+   * bug: enemy to stomp · pellet: Pac-Man power pellet walked through ·
+   * node: map stop · pedestal: raised spot where the character waves.
+   */
+  kind: "block" | "node" | "pedestal" | "bug" | "power" | "pellet";
   block?: BlockInput;
 }
 
 export interface CorridorOptions {
+  /** Prefix for generated ids (bugs, dots). */
+  id?: string;
   width: number;
+  /** Pac-Man style dots along the walking path. */
+  dots?: boolean;
   stops: CorridorStop[];
   exit?: boolean;
   entry?: boolean;
@@ -45,7 +57,7 @@ export function corridorHeight(withBlocks: boolean): number {
 
 /** Horizontal strip in an empty band of the layout (never over content). */
 export function buildCorridor(opts: CorridorOptions): TrackLayout | null {
-  const W = Math.floor(opts.width);
+  const W = snap(opts.width);
   if (W < 100) return null;
   const hasBlocks = opts.stops.some((s) => s.kind === "block");
   const H = corridorHeight(hasBlocks);
@@ -95,24 +107,65 @@ export function buildCorridor(opts: CorridorOptions): TrackLayout | null {
   const minX = 40;
   const maxX = W - 46;
   let last = -Infinity;
+  // Enemies stand on solid ground: nudge them to the middle of a merlon.
+  const nudge = (st: CorridorStop) => {
+    if (st.kind !== "bug" || !gaps.length) return st;
+    let best = st.x;
+    let bestD = Infinity;
+    for (let k = 0; k <= gaps.length; k++) {
+      const a = k === 0 ? 0 : gaps[k - 1][1];
+      const b = k === gaps.length ? W : gaps[k][0];
+      const c = (a + b) / 2;
+      if (b - a >= 18 && Math.abs(c - st.x) < bestD) {
+        best = c;
+        bestD = Math.abs(c - st.x);
+      }
+    }
+    return { ...st, x: best };
+  };
   const stops = [...opts.stops]
-    .map((s) => ({ ...s, x: Math.min(maxX, Math.max(minX, s.x)) }))
+    .map((s) => nudge({ ...s, x: Math.min(maxX, Math.max(minX, s.x)) }))
     .sort((a, b) => a.x - b.x)
     .filter((s) => {
       // Stops must not sit in a gap and need room between them.
-      if (gaps.some(([a, b]) => s.x > a - 14 && s.x < b + 14)) return false;
+      if (s.kind !== "bug" && gaps.some(([a, b]) => s.x > a - 14 && s.x < b + 14)) return false;
       if (s.x - last < 28) return false;
       last = s.x;
       return true;
     });
 
   const pedestals: PlatformSpec[] = [];
-  for (const s of stops) {
-    if (s.kind === "block" && s.block) {
+  const pid = opts.id ?? "c";
+  for (const [i, s] of stops.entries()) {
+    if ((s.kind === "block" || s.kind === "power") && s.block) {
       travel(s.x - 10);
-      blocks.push({ kind: "question", points: 100, ...s.block, x: s.x - BLOCK / 2, y: g - 24 - 9 - BLOCK });
+      blocks.push({
+        kind: s.kind === "power" ? "power" : "question",
+        points: s.kind === "power" ? 500 : 100,
+        ...s.block,
+        x: s.x - BLOCK / 2,
+        y: g - 24 - 9 - BLOCK,
+      });
       route.push({ kind: "jump", to: [s.x + 10, g], apex: 9, bump: s.block.id });
       x = s.x + 10;
+    } else if (s.kind === "bug") {
+      // Land on the bug (stomp), then bounce off it — never from/into a gap.
+      const inGap = (v: number) => gaps.find(([a, b]) => v > a - 2 && v < b + 2);
+      let from = s.x - 16;
+      const g1 = inGap(from);
+      if (g1) from = g1[1] + 3;
+      let to = s.x + 18;
+      const g2 = inGap(to);
+      if (g2) to = g2[1] + 4;
+      travel(from);
+      const id = s.block?.id ?? `${pid}-bug-${i}`;
+      blocks.push({ kind: "bug", points: 200, ...s.block, id, x: s.x - BLOCK / 2, y: g - 7 });
+      route.push({ kind: "jump", to: [s.x, g - 7], apex: 8, stomp: id }, { kind: "jump", to: [to, g], apex: 7 });
+      x = to;
+    } else if (s.kind === "pellet" && s.block) {
+      // Power pellet at body height: collected by walking through it.
+      travel(s.x - 10);
+      blocks.push({ kind: "pellet", points: 50, ...s.block, x: s.x - BLOCK / 2, y: g - 16 });
     } else if (s.kind === "node") {
       travel(s.x);
       route.push({ kind: "jump", to: [s.x, g], apex: 4, weight: 0.7 }, { kind: "idle", weight: 0.5 });
@@ -135,7 +188,7 @@ export function buildCorridor(opts: CorridorOptions): TrackLayout | null {
     route.push({ kind: "idle" });
   }
 
-  return {
+  const layout: TrackLayout = {
     width: W,
     height: H,
     platforms: [...platforms, ...pedestals],
@@ -147,6 +200,24 @@ export function buildCorridor(opts: CorridorOptions): TrackLayout | null {
     props: [],
     blocks,
   };
+  if (opts.dots) layout.blocks = [...blocks, ...dotsAlongWalks(layout, pid, g, blocks)];
+  return layout;
+}
+
+/** Pac-Man dots every 10 art px along ground-level walks, clear of other items. */
+function dotsAlongWalks(layout: TrackLayout, pid: string, g: number, avoid: BlockSpec[]): BlockSpec[] {
+  const dots: BlockSpec[] = [];
+  const route = compileRoute(layout);
+  let n = 0;
+  for (const seg of route.segments) {
+    if ((seg.step.kind !== "walk" && seg.step.kind !== "run") || seg.from[1] !== g) continue;
+    const [a, b] = [Math.min(seg.from[0], seg.to[0]), Math.max(seg.from[0], seg.to[0])];
+    for (let x = Math.ceil((a + 4) / 10) * 10; x <= b - 4; x += 10) {
+      if (avoid.some((o) => Math.abs(o.x + 4 - x) < 12)) continue;
+      dots.push({ id: `${pid}-dot-${n++}`, kind: "coin", points: 10, x: x - 4, y: g - 16 });
+    }
+  }
+  return dots;
 }
 
 /** Castle battlements: merlons with crenel gaps to hop across. */
@@ -171,7 +242,7 @@ export interface TreeOptions {
   acorns: BlockInput[];
 }
 
-export const TREE = { trunkHalf: 6, stub: 14, minGap: 56, top: 42 } as const;
+export const TREE = { trunkHalf: 9, stub: 12, minGap: 56, top: 42 } as const;
 
 /**
  * Character climbs down the trunk: pops out of a knot hole at each branch,
@@ -179,8 +250,8 @@ export const TREE = { trunkHalf: 6, stub: 14, minGap: 56, top: 42 } as const;
  * vine, dives into the next hollow, and finally exits through the roots.
  */
 export function buildTree(opts: TreeOptions): TrackLayout | null {
-  const W = Math.floor(opts.width);
-  const H = Math.floor(opts.height);
+  const W = snap(opts.width);
+  const H = snap(opts.height);
   const both = opts.sides.some((s) => s < 0);
   if (W < (both ? 48 : 36)) return null;
   const cx = both ? W / 2 : 12;
@@ -205,7 +276,7 @@ export function buildTree(opts: TreeOptions): TrackLayout | null {
   knots.forEach((k, i) => {
     const d = k.side;
     const stubX = d > 0 ? cx + TREE.trunkHalf : cx - TREE.trunkHalf - TREE.stub;
-    const vineX = cx + d * 14;
+    const vineX = cx + d * 16;
     const nextY = knots[i + 1]?.y ?? rootY;
     const vineEnd = k.y + Math.max(24, (nextY - k.y) * 0.5);
     const dropY = Math.min(nextY - 12, vineEnd + 10);
@@ -220,7 +291,7 @@ export function buildTree(opts: TreeOptions): TrackLayout | null {
         kind: "acorn",
         points: 100,
         ...k.acorn,
-        x: cx + d * 7 - BLOCK / 2,
+        x: cx + d * 8 - BLOCK / 2,
         y: k.y - 24 - 6 - BLOCK,
       });
       route.push({ kind: "jump", to: [vineX, k.y], apex: 6, bump: k.acorn.id });
@@ -228,6 +299,10 @@ export function buildTree(opts: TreeOptions): TrackLayout | null {
       route.push({ kind: "jump", to: [vineX, k.y], apex: 6 });
     }
     route.push({ kind: "climb", toY: vineEnd }, { kind: "jump", to: [cx, dropY], apex: 4 }, { kind: "enter", into: `d${i}` });
+    // Leaf coins hanging on the vine, collected while climbing down.
+    for (let f = k.y + 14, j = 0; f + 2 <= vineEnd; f += 14, j++) {
+      blocks.push({ id: `leaf-${i}-${j}`, kind: "coin", points: 10, x: vineX - 4, y: f - 16 });
+    }
   });
 
   return {
@@ -248,8 +323,8 @@ export function buildTree(opts: TreeOptions): TrackLayout | null {
 
 /** Rides a cab down the experience shaft, pausing at each entry's floor. */
 export function buildElevator(opts: { width: number; height: number; floors: number[] }): TrackLayout | null {
-  const W = Math.floor(opts.width);
-  const H = Math.floor(opts.height);
+  const W = snap(opts.width);
+  const H = snap(opts.height);
   if (W < 22 || H < 90) return null;
   const cx = W / 2;
   const top = 30;
@@ -293,7 +368,7 @@ export const CONVEYOR_H = 40;
 
 /** Rides a conveyor belt across the machine room. */
 export function buildConveyor(opts: { width: number }): TrackLayout | null {
-  const W = Math.floor(opts.width);
+  const W = snap(opts.width);
   if (W < 110) return null;
   const g = CONVEYOR_H - 4;
   const exitPipe = { x: 2, y: g - PIPE_H, w: PIPE_W };
@@ -317,6 +392,54 @@ export function buildConveyor(opts: { width: number }): TrackLayout | null {
     ],
     revealAfter: 1,
     props: [],
+  };
+}
+
+/* ------------------------------------------------------------------------- */
+/*  Jetpack (machine room)                                                   */
+/* ------------------------------------------------------------------------- */
+
+export const JETPACK_H = 56;
+
+/** Bump a "?" for the jetpack, fly through the machine room collecting coins. */
+export function buildJetpack(opts: { width: number; id?: string }): TrackLayout | null {
+  const W = snap(opts.width);
+  if (W < 180) return null;
+  const pid = opts.id ?? "jet";
+  const g = JETPACK_H - 4;
+  const exitPipe = { x: 2, y: g - PIPE_H, w: PIPE_W };
+  const entryPipe = { x: W - PIPE_W - 2, y: g - PIPE_H, w: PIPE_W };
+  const fly = { kind: "fly" as const, to: [W - 62, g] as [number, number], lift: 12, wave: 5, waves: 2 };
+  const from: [number, number] = [64, g];
+  const coins: BlockSpec[] = [];
+  for (let x = from[0] + 14, i = 0; x < fly.to[0] - 10; x += 14, i++) {
+    const t = (x - from[0]) / (fly.to[0] - from[0]);
+    const [, feet] = flyPoint(from, fly.to, fly, t);
+    coins.push({ id: `${pid}-coin-${i}`, kind: "coin", points: 10, x: x - 4, y: feet - 16 });
+  }
+  return {
+    width: W,
+    height: JETPACK_H,
+    platforms: [{ x: 0, y: g, w: W, kind: "metal" }],
+    exitPipe,
+    entryPipe,
+    route: [
+      { kind: "emerge" },
+      { kind: "jump", to: [30, g], apex: 4 },
+      { kind: "walk", to: 36 },
+      { kind: "jump", to: [56, g], apex: 9, bump: `${pid}-power` },
+      { kind: "walk", to: 64 },
+      fly,
+      { kind: "walk", to: entryPipe.x - 12 },
+      { kind: "jump", to: [entryPipe.x + PIPE_W / 2, entryPipe.y], apex: 6 },
+      { kind: "enter" },
+    ],
+    revealAfter: 1,
+    props: [],
+    blocks: [
+      { id: `${pid}-power`, kind: "power", power: "jetpack", points: 500, x: 42, y: g - 24 - 9 - BLOCK, label: "JETPACK" },
+      ...coins,
+    ],
   };
 }
 
@@ -353,7 +476,7 @@ export function finaleGeometry(width: number): FinaleGeometry {
 
 /** Climb three stair bricks, touch the star, slide the flagpole, reach the portal. */
 export function buildFinale(opts: { width: number }): TrackLayout | null {
-  const W = Math.floor(opts.width);
+  const W = snap(opts.width);
   if (W < 120) return null;
   const f = finaleGeometry(W);
   const g = f.ground;

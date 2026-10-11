@@ -405,3 +405,49 @@
     text-align: left;
   }
 }
+
+/* ---------- Level: tag + checkpoint flags ---------- */
+.levelTag {
+  padding: 2px 8px;
+  background: #f2d27a;
+  color: #101419;
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+}
+.toc a {
+  position: relative;
+  padding-left: 22px;
+}
+.toc a::before {
+  /* Checkpoint flag: lowered until the section is reached */
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 2px;
+  height: 14px;
+  background: #5c6f88;
+  transform: translateY(-50%);
+}
+.toc a::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: calc(50% + 2px);
+  width: 8px;
+  height: 5px;
+  background: #3a4454;
+  transition:
+    top 300ms steps(3),
+    background 300ms steps(3);
+}
+.toc a[data-reached="true"]::after {
+  top: calc(50% - 7px);
+  background: #58a85c;
+}
+@media (max-width: 1000px) {
+  .toc a {
+    padding-left: 22px;
+  }
+}

@@ -1,45 +1,50 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { links } from "@/data/portfolio";
-import { isConfigured, NAV_ITEMS } from "@/lib/content";
+import { WORLD_NAV } from "@/data/worldNav";
+import { isConfigured } from "@/lib/content";
+import { isSoundOn, onSoundChange, play, restoreSound, setSound } from "@/lib/sfx";
 import { openTerminal } from "@/components/terminal/events";
+import { WorldMap } from "@/components/worldmap/WorldMap";
 import styles from "./SiteHeader.module.css";
 
+/**
+ * The header is a world selector: six world tiles (each a normal link to its
+ * section, labelled with the section name), plus sound, world map (pause
+ * menu) and terminal. The journey controller marks the current and visited
+ * worlds on the tiles.
+ */
 export function SiteHeader() {
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState<string | null>(null);
-  const toggleRef = useRef<HTMLButtonElement>(null);
+  const mapRef = useRef<HTMLDialogElement>(null);
+  const sound = useSyncExternalStore(onSoundChange, isSoundOn, () => false);
 
-  // Close the mobile menu on Escape and return focus to the toggle.
   useEffect(() => {
-    if (!open) return;
+    restoreSound();
+  }, []);
+
+  // "M" opens/closes the world map (when not typing).
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        toggleRef.current?.focus();
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+      if (e.key.toLowerCase() === "m" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const d = mapRef.current;
+        if (!d) return;
+        if (d.open) d.close();
+        else d.showModal();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  // Highlight the section currently in view (home page only).
-  useEffect(() => {
-    const ids = NAV_ITEMS.map((n) => n.id);
-    const els = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
-    if (!els.length) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const hit = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (hit) setActive(hit.target.id);
-      },
-      { rootMargin: "-45% 0px -50% 0px" },
-    );
-    els.forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
   }, []);
+
+  const openMap = () => {
+    mapRef.current?.showModal();
+    play("pipe");
+  };
+  const closeMap = () => mapRef.current?.close();
 
   return (
     <header className={styles.header}>
@@ -51,55 +56,83 @@ export function SiteHeader() {
           <span className="pixel">ANISH.EXE</span>
         </Link>
 
-        <nav aria-label="Primary" className={styles.nav}>
-          <button
-            ref={toggleRef}
-            type="button"
-            className={`btn btn-ghost btn-sm ${styles.toggle}`}
-            aria-expanded={open}
-            aria-controls="primary-menu"
-            onClick={() => setOpen((v) => !v)}
-          >
-            <span aria-hidden="true" className={styles.burger} data-open={open} />
-            Menu
-          </button>
-          <ul id="primary-menu" className={styles.menu} data-open={open}>
-            {NAV_ITEMS.map((item) => (
-              <li key={item.id}>
+        <nav aria-label="Worlds" className={styles.worlds}>
+          <ol className={styles.tiles}>
+            {WORLD_NAV.map((w) => (
+              <li key={w.world}>
                 <Link
-                  href={item.href}
-                  className={styles.link}
-                  aria-current={active === item.id ? "location" : undefined}
-                  onClick={() => setOpen(false)}
+                  href={w.href}
+                  className={styles.tile}
+                  data-world-tile={w.world}
+                  title={`World ${w.world} · ${w.title}`}
+                  style={{ "--accent": w.accent } as React.CSSProperties}
                 >
-                  {item.label}
+                  <span className={styles.num} aria-hidden="true">
+                    {w.world}
+                  </span>
+                  <span className={styles.tileTitle}>{w.title}</span>
                 </Link>
               </li>
             ))}
-            {isConfigured(links.resume) && (
-              <li>
-                <a href={links.resume.href} className="btn btn-sm" target="_blank" rel="noopener noreferrer">
-                  Resume
-                </a>
-              </li>
-            )}
-          </ul>
+          </ol>
         </nav>
 
-        <button
-          type="button"
-          className={`btn btn-sm ${styles.term}`}
-          onClick={() => {
-            setOpen(false);
-            openTerminal();
-          }}
-          aria-label="Open terminal"
-          title="Open terminal ( ` )"
-        >
-          <span aria-hidden="true">&gt;_</span>
-          <span className={styles.termLabel}>Terminal</span>
-        </button>
+        <div className={styles.controls}>
+          {isConfigured(links.resume) && (
+            <a href={links.resume.href} className="btn btn-sm" target="_blank" rel="noopener noreferrer">
+              Resume
+            </a>
+          )}
+          <button
+            type="button"
+            className={`btn btn-sm ${styles.iconBtn}`}
+            aria-pressed={sound}
+            aria-label="Sound"
+            title={sound ? "Sound on" : "Sound off"}
+            onClick={() => {
+              setSound(!sound);
+              if (!sound) play("coin");
+            }}
+          >
+            <span aria-hidden="true" className={styles.speaker} data-on={sound} />
+          </button>
+          <button type="button" className={`btn btn-sm ${styles.mapBtn}`} onClick={openMap} aria-haspopup="dialog" title="World map (M)">
+            <span aria-hidden="true" className={styles.mapIcon} />
+            <span className={styles.mapLabel}>Map</span>
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${styles.iconBtn}`}
+            onClick={() => openTerminal()}
+            aria-label="Open terminal"
+            title="Open terminal ( ` )"
+          >
+            <span aria-hidden="true">&gt;_</span>
+          </button>
+        </div>
       </div>
+
+      <dialog
+        ref={mapRef}
+        className={styles.mapDialog}
+        aria-labelledby="world-map-title"
+        onClick={(e) => {
+          if (e.target === mapRef.current) closeMap();
+        }}
+      >
+        <div className={styles.mapWindow}>
+          <div className={styles.mapHead}>
+            <h2 id="world-map-title" className={styles.mapTitle}>
+              World map <span className={styles.paused}>· Paused</span>
+            </h2>
+            <button type="button" className={styles.close} onClick={closeMap} aria-label="Close world map">
+              ✕
+            </button>
+          </div>
+          <WorldMap variant="overlay" onNavigate={closeMap} />
+          <p className={styles.mapHint}>Pick a world to warp there. Press M or Esc to close.</p>
+        </div>
+      </dialog>
     </header>
   );
 }

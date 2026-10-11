@@ -75,6 +75,8 @@ export function Profile() {
               label="Player select"
               theme="select"
               stopSelector="[data-unlock-id^='int-']"
+              stopKind="pellet"
+              dots
               blocks={interests.map((i, k) => ({ id: `int-${k}`, unlock: `int-${k}`, label: i.text }))}
               pedestal
             />

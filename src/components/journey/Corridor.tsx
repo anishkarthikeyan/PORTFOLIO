@@ -12,6 +12,15 @@ interface BlockMeta {
   id: string;
   unlock?: string;
   label?: string;
+  say?: string;
+  power?: "coffee" | "jetpack" | "star";
+}
+
+/** Extra items at a fraction of the corridor width (enemies, power-ups). */
+export interface CorridorExtra {
+  at: number;
+  kind: "bug" | "power";
+  block?: BlockMeta;
 }
 
 const GROUND: Record<CorridorTheme, "ground" | "wood" | "block" | "island" | "metal"> = {
@@ -44,6 +53,8 @@ export function Corridor({
   stopSelector,
   stopKind = "block",
   blocks = [],
+  extras = [],
+  dots = false,
   pedestal = false,
   sign,
   banner,
@@ -54,7 +65,10 @@ export function Corridor({
   theme: CorridorTheme;
   /** CSS selector (within the corridor's parent) for elements to stop above. */
   stopSelector?: string;
-  stopKind?: "block" | "node";
+  stopKind?: "block" | "node" | "pellet";
+  extras?: CorridorExtra[];
+  /** Pac-Man dots along the path. */
+  dots?: boolean;
   /** One per stop, in order. */
   blocks?: BlockMeta[];
   /** End with a pedestal where the character waves. */
@@ -62,7 +76,7 @@ export function Corridor({
   sign?: string;
   banner?: string;
 }) {
-  const withBlocks = stopKind === "block" && blocks.length > 0;
+  const withBlocks = (stopKind === "block" && blocks.length > 0) || extras.some((e) => e.kind === "power");
   const height = corridorHeight(withBlocks);
 
   const { ref, layout, scale } = useTrack({
@@ -82,10 +96,15 @@ export function Corridor({
         width,
       );
       const stops: CorridorStop[] = xs.map((x, i) =>
-        stopKind === "block" && blocks[i] ? { x, kind: "block", block: blocks[i] } : { x, kind: "node" },
+        (stopKind === "block" || stopKind === "pellet") && blocks[i]
+          ? { x, kind: stopKind, block: blocks[i] }
+          : { x, kind: "node" },
       );
+      extras.forEach((e) => stops.push({ x: e.at * width, kind: e.kind, block: e.block }));
       if (pedestal) stops.push({ x: width - 64, kind: "pedestal" });
       return buildCorridor({
+        id,
+        dots,
         width,
         stops,
         gaps: theme === "castle" ? battlementGaps(width) : undefined,
@@ -167,6 +186,18 @@ function Decor({ theme, layout, sign, banner }: { theme: CorridorTheme; layout: 
           <text x={W / 2} y={11} textAnchor="middle" className={styles.marquee}>
             PLAYER SELECT
           </text>
+          {/* A wandering ghost — turns blue once a power pellet is eaten */}
+          <g className={styles.ghostWrap}>
+            <g className={styles.ghost} transform={`translate(${W * 0.62} ${g - 12})`}>
+              <rect x={1} y={0} width={6} height={1} />
+              <rect x={0} y={1} width={8} height={6} />
+              <rect x={0} y={7} width={2} height={1} />
+              <rect x={3} y={7} width={2} height={1} />
+              <rect x={6} y={7} width={2} height={1} />
+              <rect x={1} y={2} width={2} height={2} className={styles.ghostEye} />
+              <rect x={5} y={2} width={2} height={2} className={styles.ghostEye} />
+            </g>
+          </g>
         </g>
       );
     case "dungeon":

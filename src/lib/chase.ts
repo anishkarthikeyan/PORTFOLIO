@@ -14,13 +14,13 @@
 
 export const CHASE = {
   /** Natural game speed (beats per second). */
-  baseSpeed: 2.4,
+  baseSpeed: 1.7,
   /** Fastest catch-up (a visible sprint) before warping instead. */
-  maxSpeed: 12,
-  /** Catch-up time constant (s): together with baseSpeed, any gap < warpGap closes in ≈1–1.4s. */
-  maxLag: 0.7,
+  maxSpeed: 8,
+  /** Catch-up time constant (s): with baseSpeed, typical gaps close in ≈1–2s. */
+  maxLag: 0.9,
   /** Above this speed the character visibly sprints (run frames). */
-  sprintAt: 4,
+  sprintAt: 4.5,
   /** Gaps larger than this (beats) warp through a pipe… */
   warpGap: 18,
   /** …as does skipping this many tracks at once (nav clicks, flicks). */

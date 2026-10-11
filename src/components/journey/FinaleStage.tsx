@@ -80,6 +80,10 @@ export function FinaleStage({ links }: { links: (ConfigurableLink & { href: stri
               <dt>Blocks</dt>
               <dd data-sum="blocks">0</dd>
             </div>
+            <div>
+              <dt>Coins</dt>
+              <dd data-sum="coins">0</dd>
+            </div>
           </dl>
         </div>
       </div>

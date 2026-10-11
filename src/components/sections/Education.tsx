@@ -39,6 +39,10 @@ export function Education() {
           world={5}
           label="Academy castle"
           theme="castle"
+          extras={[
+            { at: 0.36, kind: "bug" },
+            { at: 0.7, kind: "bug" },
+          ]}
           banner={`EXPECTED ${education[0]?.expectedGraduation ?? ""}`.trim()}
         />
         <ul className={styles.eduList}>

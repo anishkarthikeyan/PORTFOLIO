@@ -692,12 +692,13 @@
   position: relative;
 }
 
+/* Pixel canopy (128 × 48 art px PNG, scaled with crisp pixels). The trunk
+   fork at its bottom-center (x = 64) meets the trunk drawn below. */
 .canopy {
-  height: calc(34 * var(--px));
-  margin-bottom: calc(-6 * var(--px));
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 34' shape-rendering='crispEdges'%3E%3Cg fill='%232f6b3a'%3E%3Crect x='30' y='4' width='36' height='8'/%3E%3Crect x='18' y='10' width='60' height='10'/%3E%3Crect x='8' y='18' width='80' height='10'/%3E%3Crect x='20' y='26' width='56' height='8'/%3E%3C/g%3E%3Cg fill='%233f8a4b'%3E%3Crect x='34' y='6' width='14' height='6'/%3E%3Crect x='22' y='14' width='18' height='6'/%3E%3Crect x='56' y='12' width='16' height='6'/%3E%3Crect x='12' y='22' width='20' height='4'/%3E%3Crect x='62' y='22' width='20' height='4'/%3E%3C/g%3E%3Cg fill='%2362b06a'%3E%3Crect x='38' y='6' width='4' height='2'/%3E%3Crect x='26' y='14' width='4' height='2'/%3E%3Crect x='60' y='12' width='4' height='2'/%3E%3C/g%3E%3Cg fill='%23a9bdd6'%3E%3Crect x='46' y='16' width='2' height='2'/%3E%3Crect x='30' y='24' width='2' height='2'/%3E%3Crect x='70' y='18' width='2' height='2'/%3E%3C/g%3E%3C/svg%3E")
-    center bottom / auto 100% no-repeat;
+  height: calc(48 * var(--px));
+  margin-bottom: -1px;
+  background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAAAwCAYAAADZ9HK+AAAEs0lEQVR42u1cPWgUQRR+ey5ahCPRSArvyAmGKCZXyRUaEmIRAlZRSKGpBCtNYWMTLMXGxiJY2WoTMFaCpEhQgsVhdYkEieCFnGAw3IYjghI5i2Q2k83szv/uzN0+ONjb3Zm3O9/3vnlvdlmA1FJLrX3NsfXC+yaLTZ7z1+cqjsl+kjLXVtAfzNyGSnWTp3mTFSTcz8jUMO9lNm0ig2MT6AJgEO3Dq4/HIjbKT7GQp5KNdA7JT0qABIGPIkJcfkwjgmMy+LoAScoQEUwiQSYFn8+KhTzzudtbnv/D74k3sWwbAtgQ+ZyJ5zEzjQTGVQEmg48iGQCgu6eLeBzfj2/jbUemho/lH22vAHFFRFCWw2w8Ow3j2WmmKYHWX9gxE1TAqnUA1vJLRXS/b8xKTwk0kqVTgAJbKq9QJTdMlouFvN+epS3LdMCy3yRiWE8AmUhfUgSEDZFufA5Aqo3x+Zqn/NKZGwRttDQo3KcJ6wGOiUngwFhRSFoRIEvlFf+c4PGotnHZ6kIlJUBYBozAFyUAzcKIwRPxeN4hCr4pauAkCTqq+UVBTDKKZYmAzPN2oFbeSIwMTlLyjg+gCKB3LjwGAIDX354YlVR53o6/3dXVKUWGOIjgxA28CVEXNwFGS4PwdmGZSgy8bVxEyNgCfrDm1w0i+olWAKzXTfI1MTZ0ZMx0rhg6OsFXBXzSskxqS+szSB5a26BK4IbUQIcSZGwFnzX6VES6SJ+8x6JUIlfq1aYEri0PdIJRo3M6UEkIlj55/PVNFpsqlcDRATxL9Mcpy2EDLNM2zGTa0kxHueiqAD1X6uUGUQcxTI90WUNTASh8A9mVyexZZE0HMeJMGlXb/SvPAADgxedHqgkhRAZHVXJngyzHSSJRmxgbCq0GeKYJVhK4rOAT5CeVZQ1GA9+r1g+JXTgdpQpMyaIrA36ryHIrWJAYB5hRSeDwyr4qWVY5F9rglzeiaZHO0nZ3q0GdDlyWRENH9CUFgA6/LGDp8EWzjp6sTwJuArAs6rSaLKPBVQWiKcSIWjxqu3cCI6uFA5B4ZZnlHFFJ96p1pj7Tl0IZo+/X809w99pFAAD46f2G5fUf/rGdv//g7MOrWmVZRZ8q/bk2gmgjCU3t00mi/veqdW5AVUjr3vzakegHAKjVG/B9u3FEBdybl4SmDhUAzdx6CQAAT9/cUzLWu1sNuSqgVt4AVSRgkTUdCZhNka4KeLwMBNH3AUjMQUmJypumEUPEV25xA3KLh0/PSNGP7Hx31t/uPHkC9ubXIvuyyWgLQS5jB/5UIJPxRp0TfNSJ9pMy8zBC4Ps7sD7iVAPWqOzoyWr3w7IUzP0wCJ8OeAlAAoJFpngHDEVr7XovNfpr9UP/UblAsE8V8quDCCyrf0JVwPpcxembLDZRpMpeOD5ALF/tiityVM67cd4Xj18lbwThK4WsFy96kTw+eaI/qAAyKhDHvan2KbUOgDtkfRdQ9hUm/JNuQYmNWxlIEi9zf0mMp9VfCiVFT//qfo7xdWA/7zi1XIuMfpICkFTgz1DO/4/7sO2roC27FIyA6L+cb+L/B86daaoupYI+bLcMtIjdOADm3ZdNrcCg/pG/lACpWW3/AamEudMz0c3HAAAAAElFTkSuQmCC") center bottom / calc(128 * var(--px)) 100% no-repeat;
+  image-rendering: pixelated;
 }
 
 .treeBody {
@@ -737,22 +738,6 @@
 }
 .limb[data-side="left"] {
   grid-column: 1;
-}
-/* Branch connecting the panel to the trunk */
-.limb::before {
-  content: "";
-  position: absolute;
-  top: calc(10 * var(--px));
-  width: calc(6 * var(--px));
-  height: calc(3 * var(--px));
-  background: #5a3322;
-  box-shadow: inset 0 calc(1 * var(--px)) 0 #75442f;
-}
-.limb[data-side="right"]::before {
-  left: calc(-6 * var(--px) - 1px);
-}
-.limb[data-side="left"]::before {
-  right: calc(-6 * var(--px) - 1px);
 }
 .limbCanopy {
   border-top-color: #62b06a;
@@ -795,9 +780,9 @@
   .limb[data-side="right"] {
     grid-column: 2;
   }
-  .limb[data-side="left"]::before {
-    right: auto;
-    left: calc(-6 * var(--px) - 1px);
+  .canopy {
+    /* Trunk sits 12 art px from the left on narrow screens */
+    background-position: calc((12 - 64) * var(--px)) bottom;
   }
 }
 @media (max-width: 639px) {
@@ -941,5 +926,68 @@
 @media (max-width: 1000px) {
   .contactGrid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- DSA: Tetris drop-in for the topic tiles ---------- */
+
+.topic {
+  border-top: 4px solid var(--tc, #2c3542);
+}
+:global(html[data-journey="motion"]) [data-tetris] .topic {
+  transition: none;
+}
+:global(html[data-journey="motion"]) [data-tetris]:not([data-shown="true"]) .topic {
+  transform: translateY(-140%);
+  opacity: 0;
+}
+:global(html[data-journey="motion"]) [data-tetris][data-shown="true"] .topic {
+  animation: tetrisDrop 520ms steps(6) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+@keyframes tetrisDrop {
+  0% {
+    transform: translateY(-140%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+  92% {
+    box-shadow: 0 0 0 2px var(--tc, #f2d27a);
+  }
+  100% {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+}
+/* Line clear flash once the board has filled */
+:global(html[data-journey="motion"]) [data-tetris][data-shown="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: lineClear 500ms steps(2) both;
+  animation-delay: 1.3s;
+}
+.topicGrid {
+  position: relative;
+}
+@keyframes lineClear {
+  0%,
+  100% {
+    background: transparent;
+  }
+  50% {
+    background: rgba(242, 210, 122, 0.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topic {
+    animation: none !important;
   }
 }

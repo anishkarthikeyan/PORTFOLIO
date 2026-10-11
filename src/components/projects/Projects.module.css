@@ -209,3 +209,16 @@
     #3a2015;
   box-shadow: 0 0 0 1px #2b1a12;
 }
+
+/* Door swings open when entering the level */
+.door {
+  transform-origin: left center;
+  transition: transform 300ms steps(3);
+}
+.card[data-entering="true"] .door {
+  transform: perspective(40px) rotateY(-70deg);
+  background: #0b0e12;
+}
+.card[data-entering="true"] {
+  border-color: #f2d27a;
+}

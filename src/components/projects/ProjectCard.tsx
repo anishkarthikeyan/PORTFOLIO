@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LevelLink } from "@/components/level/LevelLink";
 import type { Project } from "@/data/types";
 import { PHASE_LABEL, TRACK_LABEL } from "@/lib/content";
 import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
@@ -68,9 +69,16 @@ export function ProjectCard({ project, level }: { project: Project; level?: stri
               Repo ↗<span className="sr-only"> for {p.title}</span>
             </a>
           )}
-          <Link href={`/projects/${p.slug}`} className="btn btn-sm" aria-describedby={headingId}>
+          <LevelLink
+            href={`/projects/${p.slug}`}
+            mode="enter"
+            level={level}
+            title={p.title}
+            className="btn btn-sm"
+            aria-describedby={headingId}
+          >
             Enter level ▸
-          </Link>
+          </LevelLink>
         </div>
       </div>
     </article>

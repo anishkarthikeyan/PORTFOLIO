@@ -4,6 +4,7 @@ import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SampleNotice, StatusBadge } from "@/components/ui/Status";
 import { ConveyorTrack } from "@/components/journey/ConveyorTrack";
+import { JetpackTrack } from "@/components/journey/JetpackTrack";
 import styles from "./sections.module.css";
 
 export function SystemDesign() {
@@ -35,7 +36,7 @@ export function SystemDesign() {
         </ul>
 
         <div className={styles.designList}>
-          {designs.map((d) => (
+          {designs.map((d, di) => (
             <article key={d.slug} data-anchor className={`panel ${styles.design}`} aria-labelledby={`sd-${d.slug}`}>
               <header className={styles.designHead}>
                 <h3 id={`sd-${d.slug}`} className={styles.h3}>
@@ -68,7 +69,12 @@ export function SystemDesign() {
                 </div>
               </div>
 
-              <ConveyorTrack id={`conveyor-${d.slug}`} label="Machine room" />
+              {/* First machine: jetpack run. The rest: conveyor rides. */}
+              {di === 0 ? (
+                <JetpackTrack id={`jetpack-${d.slug}`} label="Machine room" />
+              ) : (
+                <ConveyorTrack id={`conveyor-${d.slug}`} label="Machine room" />
+              )}
               <div className={styles.machine}>
                 <ArchitectureDiagram diagram={d.diagram} />
               </div>

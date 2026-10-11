@@ -1,0 +1,81 @@
+.card {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-content: center;
+  gap: var(--s-3);
+  text-align: center;
+  background: #0b0e12;
+  clip-path: circle(0% at 50% 50%);
+  animation: irisIn 520ms steps(8) forwards;
+}
+.card[data-phase="out"] {
+  animation: irisOut 400ms steps(6) forwards;
+}
+@keyframes irisIn {
+  to {
+    clip-path: circle(150% at 50% 50%);
+  }
+}
+@keyframes irisOut {
+  from {
+    clip-path: circle(150% at 50% 50%);
+  }
+  to {
+    clip-path: circle(0% at 50% 50%);
+  }
+}
+.level {
+  font-family: var(--font-pixel);
+  font-size: clamp(1.4rem, 1rem + 2vw, 2.4rem);
+  color: #f2d27a;
+  text-transform: uppercase;
+}
+.title {
+  font-family: var(--font-mono);
+  font-size: clamp(1rem, 0.8rem + 1vw, 1.5rem);
+  font-weight: 700;
+  color: var(--text);
+}
+.start {
+  font-family: var(--font-pixel);
+  font-size: 0.875rem;
+  color: var(--steel-bright);
+  text-transform: uppercase;
+  animation: startBlink 0.5s steps(1) infinite;
+}
+@keyframes startBlink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ---------- Case study: checkpoints + level progress ---------- */
+.progress {
+  position: sticky;
+  top: calc(var(--header-h) + 4px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+.bar {
+  flex: 1;
+  height: 8px;
+  background: #161b22;
+  border: 2px solid #2c3542;
+}
+.fill {
+  display: block;
+  height: 100%;
+  width: var(--p, 0%);
+  background:
+    repeating-linear-gradient(90deg, #3a8346 0 6px, #58a85c 6px 8px);
+  transition: width 300ms steps(4);
+}

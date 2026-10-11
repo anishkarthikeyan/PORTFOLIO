@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Silkscreen } from "next/font/google";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { Terminal } from "@/components/terminal/Terminal";
+import { LevelTransition } from "@/components/level/LevelTransition";
 import { site } from "@/data/portfolio";
 import "./globals.css";
 
@@ -50,9 +51,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           Skip to content
         </a>
         <SiteHeader />
-        <main id="main">{children}</main>
+        <main id="main" tabIndex={-1}>
+          {children}
+        </main>
         <SiteFooter />
         <Terminal />
+        <LevelTransition />
       </body>
     </html>
   );

@@ -39,9 +39,17 @@ export interface PipeSpec {
 export type RouteStep =
   | { kind: "emerge"; weight?: number; /** Named hole instead of the exit pipe. */ from?: string }
   | { kind: "walk" | "run"; to: number; weight?: number }
-  /** `bump` names a block hit from below at the top of the arc. */
-  | { kind: "jump"; to: Point; apex?: number; weight?: number; bump?: string }
-  | { kind: "idle"; weight?: number; pose?: "idle" | "wave" }
+  /** `bump` names a block hit from below at the top of the arc; `stomp` an enemy landed on. */
+  | { kind: "jump"; to: Point; apex?: number; weight?: number; bump?: string; stomp?: string }
+  /**
+   * Jetpack flight: an arc of height `lift` with `waves` wobbles, or with
+   * `ease` a thrust/gravity curve between two heights (lab dodging).
+   */
+  | { kind: "fly"; to: Point; lift: number; wave?: number; waves?: number; ease?: boolean; weight?: number }
+  /** Top-down movement in "mini" size (maze worlds): straight line, any axis. */
+  | { kind: "move"; to: Point; weight?: number }
+  /** `event` names a block triggered mid-pause (talk to an NPC, shoot, open a door…). */
+  | { kind: "idle"; weight?: number; pose?: "idle" | "wave"; event?: string }
   | { kind: "enter"; weight?: number; /** Named hole instead of the entry pipe. */ into?: string }
   | { kind: "celebrate"; weight?: number }
   /** Vertical movement on a vine/ladder (climb) or pole (slide). */
@@ -59,12 +67,34 @@ export interface BlockSpec {
   /** Top-left in art px. Blocks are 8 × 8. */
   x: number;
   y: number;
-  kind: "question" | "brick" | "acorn" | "star";
+  /**
+   * question/brick/acorn: bumped from below. star: grabbed. bug: stomped (an
+   * enemy). coin/pellet: collected by passing through. power: a "?" block that
+   * releases a power-up.
+   */
+  kind:
+    | "question"
+    | "brick"
+    | "acorn"
+    | "star"
+    | "bug"
+    | "boss"
+    | "coin"
+    | "pellet"
+    | "power"
+    | "npc"
+    | "key"
+    | "chest"
+    | "invader";
+  /** Power-up released by a `power` block. */
+  power?: "coffee" | "jetpack" | "star";
   points: number;
   /** `data-unlock-id` of a content element to highlight when hit. */
   unlock?: string;
   /** Short text shown in the pop-up when hit. */
   label?: string;
+  /** What the character says (speech bubble) when it hits this. */
+  say?: string;
 }
 
 export type PropKind =

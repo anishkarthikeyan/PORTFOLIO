@@ -550,7 +550,10 @@
 /* Lane: right margin beside its host block (wide screens only). */
 .laneStage {
   left: calc(100% + 8px);
-  width: 160px;
+  /* Extends into the empty margin below its block so short blocks still fit a descent */
+  bottom: -48px;
+  /* 40 art px at the shared pixel scale */
+  width: calc(40 * min(100vw, 1600px) / 360);
 }
 @media (max-width: 1099px) {
   .laneStage {
@@ -765,4 +768,415 @@
   .portalCore {
     animation: none;
   }
+}
+
+/* ---------- Coins, dots, pellets, bugs, power-ups ---------- */
+
+.spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 0.8s steps(4) infinite;
+}
+@keyframes spin {
+  50% {
+    transform: scaleX(0.3);
+  }
+}
+.pellet {
+  animation: led 0.6s steps(1) infinite;
+}
+.block[data-kind="coin"][data-hit],
+.block[data-kind="dot"][data-hit] {
+  opacity: 0;
+}
+.block[data-kind="coin"][data-hit="true"] {
+  animation: coinGrab 300ms steps(3);
+}
+@keyframes coinGrab {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.block[data-kind="pellet"][data-hit] .pellet {
+  opacity: 0;
+}
+.block[data-kind="pellet"][data-hit="true"] .coin {
+  animation: coin 900ms steps(9) forwards;
+}
+
+.bug {
+  transform-box: fill-box;
+  animation: patrol 2.4s steps(12) infinite alternate;
+}
+@keyframes patrol {
+  from {
+    transform: translateX(-3px);
+  }
+  to {
+    transform: translateX(3px);
+  }
+}
+.legs {
+  animation: legs 0.3s steps(1) infinite;
+}
+@keyframes legs {
+  50% {
+    transform: translateX(1px);
+  }
+}
+/* Stomped: flattened, flipped and gone */
+.block[data-kind="bug"][data-hit] .bug {
+  animation: none;
+  transform-origin: bottom center;
+  transform: scaleY(0.35);
+  opacity: 0;
+}
+.block[data-kind="bug"][data-hit="true"] .bug {
+  animation: squash 600ms steps(4) forwards;
+}
+@keyframes squash {
+  0% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scaleY(0.35);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(0.35) translateY(4px);
+    opacity: 0;
+  }
+}
+.block[data-kind="bug"][data-hit="true"] .coin {
+  animation: coin 900ms steps(9) forwards;
+}
+
+.block[data-kind="power"] .blockFace {
+  fill: #3a5878;
+}
+.block[data-kind="power"] .blockHi {
+  fill: #a9bdd6;
+}
+.block[data-kind="power"] .blockLo {
+  fill: #23384f;
+}
+.powerMark rect {
+  fill: #f2d27a;
+}
+.powerItem {
+  opacity: 0;
+}
+.block[data-kind="power"][data-hit="true"] .powerItem {
+  animation: powerPop 1200ms steps(8) forwards;
+}
+@keyframes powerPop {
+  0% {
+    opacity: 1;
+    transform: translateY(6px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* ---------- Power-up looks on the character ---------- */
+
+.character[data-power="coffee"] .sprite {
+  filter: drop-shadow(0 0 3px rgba(242, 178, 90, 0.9)) drop-shadow(0 0 1px #f2d27a);
+}
+.character[data-power="star"] .sprite {
+  animation: starPower 0.4s steps(2) infinite;
+}
+@keyframes starPower {
+  0% {
+    filter: drop-shadow(0 0 3px #f2d27a) brightness(1.25);
+  }
+  50% {
+    filter: drop-shadow(0 0 4px #a9bdd6) brightness(1.05) hue-rotate(40deg);
+  }
+}
+.character[data-power="jetpack"]::before {
+  /* Pack on the back */
+  content: "";
+  position: absolute;
+  left: 6%;
+  top: 46%;
+  width: 22%;
+  height: 26%;
+  background: #5c6f88;
+  box-shadow: inset 2px 0 0 #a9bdd6;
+}
+.character[data-power="jetpack"][data-flying="true"]::after {
+  /* Flame while flying */
+  content: "";
+  position: absolute;
+  left: 9%;
+  top: 72%;
+  width: 16%;
+  height: 22%;
+  background: linear-gradient(#f2d27a, #e8b84f 50%, transparent);
+  animation: flameJet 0.12s steps(2) infinite;
+}
+@keyframes flameJet {
+  50% {
+    height: 14%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .pellet,
+  .bug,
+  .legs {
+    animation: none;
+  }
+}
+
+/* ---------- Pac-Man ghost ---------- */
+.ghostWrap {
+  animation: patrolWide 5s steps(20) infinite alternate;
+}
+@keyframes patrolWide {
+  from {
+    transform: translateX(-18px);
+  }
+  to {
+    transform: translateX(18px);
+  }
+}
+.ghost rect {
+  fill: #e07a8f;
+}
+.ghost .ghostEye {
+  fill: #eef1f5;
+}
+[data-scared="true"] .ghost rect {
+  fill: #3a5bd0;
+}
+[data-scared="true"] .ghost .ghostEye {
+  fill: #f2d27a;
+}
+[data-scared="true"] .ghostWrap {
+  animation-duration: 2s;
+}
+
+/* ---------- Jetpack machine room ---------- */
+.zapper {
+  animation: zap 0.5s steps(2) infinite;
+}
+@keyframes zap {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ghostWrap,
+  .zapper {
+    animation: none;
+  }
+}
+
+/* ---------- Speech bubble ---------- */
+.bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  pointer-events: none;
+  will-change: transform;
+}
+.bubble span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(280px, 60vw);
+  padding: 6px 10px;
+  background: #eef1f5;
+  color: #101419;
+  border: 2px solid #0b0e12;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.bubble[data-side="left"] span {
+  transform: translateX(-100%);
+}
+.bubble span::after {
+  /* Tail pointing at the character */
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: -8px;
+  border: 4px solid transparent;
+  border-right: 5px solid #0b0e12;
+}
+.bubble[data-side="left"] span::after {
+  left: auto;
+  right: -8px;
+  border-right-color: transparent;
+  border-left: 5px solid #0b0e12;
+}
+.bubble[data-show="false"] {
+  visibility: hidden;
+}
+.bubble[data-show="true"] span {
+  animation: bubbleIn 180ms steps(3);
+}
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- Panels react to the character ---------- */
+:global(html[data-journey="motion"]) :global([data-near="true"]) {
+  outline: 2px solid rgba(242, 210, 122, 0.55);
+  outline-offset: 3px;
+}
+.nearMark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 24px;
+  background: #f2d27a;
+  color: #101419;
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  will-change: transform;
+}
+.nearMark[data-show="false"] {
+  display: none;
+}
+.nearMark span {
+  animation: bobHereBang 0.8s steps(2) infinite;
+}
+@keyframes bobHereBang {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* ---------- Title screen ---------- */
+.title {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: var(--s-5);
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 60%, rgba(132, 155, 184, 0.16), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 3px),
+    #0b0e12;
+  /* Iris-out when leaving */
+  clip-path: circle(150% at 50% 55%);
+  transition: clip-path 800ms steps(10);
+}
+.title[data-leaving="true"] {
+  clip-path: circle(0% at 50% 55%);
+}
+.titleInner {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-4);
+  text-align: center;
+}
+.titleEyebrow {
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  color: var(--steel);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.titleLogo {
+  font-family: var(--font-pixel);
+  font-size: clamp(2.6rem, 1rem + 8vw, 6rem);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--text);
+  text-shadow:
+    4px 4px 0 #3a4454,
+    8px 8px 0 rgba(0, 0, 0, 0.6);
+}
+.titleLogo span {
+  color: #f2d27a;
+}
+.titleHero {
+  display: grid;
+  justify-items: center;
+}
+.titleHero svg {
+  animation: titleBob 0.8s steps(2) infinite;
+}
+@keyframes titleBob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.titleGround {
+  width: 220px;
+  height: 10px;
+  background:
+    linear-gradient(#5c6f88 0 3px, #2a313c 3px);
+}
+.pressStart {
+  min-height: 52px;
+  padding: 0 28px;
+  border: 3px solid #0b0e12;
+  background: #f2d27a;
+  color: #101419;
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  text-transform: uppercase;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  animation: pressBlink 1.2s steps(1) infinite;
+}
+.pressStart:hover,
+.pressStart:focus-visible {
+  animation: none;
+  transform: translate(-1px, -1px);
+}
+@keyframes pressBlink {
+  60% {
+    filter: brightness(0.75);
+  }
+}
+.titleSound {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+.skip {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.skip:hover {
+  color: var(--text);
 }

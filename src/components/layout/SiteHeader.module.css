@@ -2,7 +2,7 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(16, 20, 25, 0.88);
+  background: rgba(16, 20, 25, 0.92);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
@@ -23,7 +23,7 @@
   text-decoration: none;
   font-size: 0.95rem;
   color: var(--text);
-  margin-right: auto;
+  flex: none;
 }
 
 .logo {
@@ -38,126 +38,223 @@
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
 }
 
-.nav {
-  display: flex;
-  align-items: center;
-}
+/* ---------- World tiles ---------- */
 
-.menu {
+.worlds {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: var(--s-1);
+  justify-content: center;
+  min-width: 0;
+}
+.tiles {
+  display: flex;
+  gap: 6px;
   list-style: none;
 }
-
-.link {
+.tile {
   position: relative;
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-height: 40px;
-  padding: 0 var(--s-2);
+  padding: 0 10px 0 4px;
+  border: 2px solid transparent;
   color: var(--text-2);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   letter-spacing: 0.06em;
   text-decoration: none;
   text-transform: uppercase;
-  transition: color var(--dur) var(--ease);
+  transition:
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
 }
-.link:hover {
+.tile:hover {
   color: var(--text);
+  border-color: var(--line-strong);
 }
-.link[aria-current] {
+.num {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  background: var(--graphite-3);
+  color: var(--text-2);
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  box-shadow:
+    inset -2px -2px 0 rgba(0, 0, 0, 0.3),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.08);
+}
+/* Visited worlds light up in their colour; the current one is framed. */
+.tile[data-visited="true"] .num {
+  background: var(--accent);
+  color: var(--void);
+}
+.tile[data-current="true"] {
   color: var(--text);
+  border-color: var(--accent);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
 }
-.link[aria-current]::after {
+.tile[data-current="true"]::after {
   content: "";
   position: absolute;
-  left: var(--s-2);
-  right: var(--s-2);
-  bottom: 6px;
-  height: 2px;
-  background: var(--steel);
+  left: 50%;
+  bottom: -9px;
+  border: 4px solid transparent;
+  border-top: 5px solid var(--accent);
+  transform: translateX(-50%);
 }
 
-.nav .toggle {
-  display: none;
-}
+/* ---------- Controls ---------- */
 
-.burger {
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.iconBtn {
+  width: 40px;
+  padding: 0;
+}
+.mapBtn {
+  gap: 8px;
+}
+.mapIcon {
+  width: 14px;
+  height: 12px;
+  background:
+    linear-gradient(90deg, currentColor 0 4px, transparent 4px 5px, currentColor 5px 9px, transparent 9px 10px, currentColor 10px);
+  opacity: 0.8;
+}
+.speaker {
   position: relative;
   width: 14px;
-  height: 2px;
-  background: currentColor;
-  box-shadow:
-    0 -5px 0 currentColor,
-    0 5px 0 currentColor;
+  height: 12px;
+  background:
+    linear-gradient(currentColor, currentColor) 0 4px / 4px 4px no-repeat,
+    linear-gradient(currentColor, currentColor) 4px 2px / 3px 8px no-repeat;
 }
-.burger[data-open="true"] {
-  box-shadow: none;
+.speaker[data-on="true"]::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-left: 0;
+}
+.speaker[data-on="false"]::after {
+  content: "×";
+  position: absolute;
+  left: 9px;
+  top: -4px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* ---------- World map dialog (pause menu) ---------- */
+
+.mapDialog {
+  width: min(980px, calc(100vw - 24px));
+  max-height: calc(100svh - 32px);
+  padding: 0;
+  border: 0;
   background: transparent;
-  outline: 2px solid currentColor;
-  outline-offset: -0px;
-  width: 10px;
-  height: 10px;
+  color: var(--text);
 }
-
-.termLabel {
-  display: inline;
+.mapDialog::backdrop {
+  background: rgba(6, 8, 11, 0.8);
 }
-
-@media (max-width: 1080px) {
-  .termLabel {
-    display: none;
-  }
-  .link {
-    padding: 0 6px;
-    letter-spacing: 0.02em;
+.mapDialog[open] {
+  animation: mapIn 200ms steps(4);
+}
+@keyframes mapIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
   }
 }
-
-@media (max-width: 900px) {
-  .nav .toggle {
-    display: inline-flex;
+.mapWindow {
+  display: grid;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  background: var(--void-deep);
+  border: 2px solid var(--graphite-3);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.5);
+}
+.mapHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mapTitle {
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+.paused {
+  color: #f2d27a;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.3;
   }
-  .menu {
+}
+.close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-strong);
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.close:hover {
+  color: var(--text);
+}
+.mapHint {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1180px) {
+  /* Numbers only on medium screens; the name stays available to assistive tech. */
+  .tileTitle {
     position: absolute;
-    top: var(--header-h);
-    left: 0;
-    right: 0;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .tile {
+    padding: 0 4px;
+  }
+}
+@media (max-width: 760px) {
+  .worlds {
     display: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: var(--s-2) var(--gutter) var(--s-4);
-    background: var(--void-deep);
-    border-bottom: 1px solid var(--line-strong);
-    max-height: calc(100svh - var(--header-h));
-    overflow-y: auto;
   }
-  .menu[data-open="true"] {
-    display: flex;
+  .controls {
+    margin-left: auto;
   }
-  .link {
-    width: 100%;
-    min-height: 48px;
-    padding: 0 var(--s-2);
-    font-size: 0.95rem;
-    border-bottom: 1px solid var(--line);
+}
+@media (max-width: 380px) {
+  .mapLabel {
+    display: none;
   }
-  .link[aria-current]::after {
-    left: 0;
-    right: auto;
-    top: 14px;
-    bottom: 14px;
-    width: 2px;
-    height: auto;
-  }
-  .menu li:last-child .link {
-    border-bottom: 0;
-  }
-  .menu :global(.btn) {
-    margin-top: var(--s-3);
-    width: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .paused {
+    animation: none;
   }
 }

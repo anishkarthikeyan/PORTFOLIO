@@ -10,6 +10,7 @@ import {
   buildCorridor,
   buildElevator,
   buildFinale,
+  buildJetpack,
   buildTree,
   vehicleAt,
 } from "./tracks";
@@ -22,6 +23,10 @@ const cases: [string, TrackLayout | null][] = [
   ["corridor: map nodes", buildCorridor({ width: 340, stops: [60, 130, 200, 270].map((x) => ({ x, kind: "node" as const })) })],
   ["corridor: pedestal + blocks", buildCorridor({ width: 320, stops: [{ x: 70, kind: "block", block: block("i1") }, { x: 140, kind: "block", block: block("i2") }, { x: 250, kind: "pedestal" }] })],
   ["corridor: castle battlements", buildCorridor({ width: 300, stops: [], gaps: battlementGaps(300), ground: "block" })],
+  ["corridor: castle with bugs", buildCorridor({ width: 320, stops: [{ x: 110, kind: "bug" }, { x: 230, kind: "bug" }], gaps: battlementGaps(320), ground: "block" })],
+  ["corridor: island with bug + power-up", buildCorridor({ id: "isl", width: 320, stops: [{ x: 70, kind: "power", block: { id: "p", power: "coffee", label: "COFFEE" } }, { x: 150, kind: "bug" }, { x: 240, kind: "block", block: block("b") }] })],
+  ["corridor: pac-man dots + pellets", buildCorridor({ id: "pac", width: 320, dots: true, stops: [{ x: 90, kind: "pellet", block: block("i1") }, { x: 170, kind: "pellet", block: block("i2") }, { x: 250, kind: "pedestal" }] })],
+  ["jetpack", buildJetpack({ width: 300 })],
   ["corridor: no pipes (static)", buildCorridor({ width: 200, stops: [], exit: false, entry: false })],
   ["tree: both sides", buildTree({ width: 48, height: 600, knots: [40, 150, 260, 380, 500], sides: [1, -1, 1, -1, 1], acorns: ["a", "b", "c", "d", "e"].map(block) })],
   ["tree: compact one side", buildTree({ width: 36, height: 520, knots: [50, 140, 240, 330, 430], sides: [1, 1, 1, 1, 1], acorns: ["a", "b", "c", "d", "e"].map(block) })],
@@ -67,10 +72,12 @@ describe.each(cases)("%s", (_name, layout) => {
     }
   });
 
-  it("hits every block with its head at the bump", () => {
+  it("hits every bumped block with its head", () => {
+    const bumped = new Set(["question", "brick", "acorn", "power"]);
     for (const ev of route.events.filter((e) => e.kind === "block")) {
       const b = layout.blocks!.find((x) => x.id === ev.id)!;
       expect(b, ev.id).toBeDefined();
+      if (!bumped.has(b.kind)) continue;
       const s = stateAtBeat(route, ev.beat);
       const head = s.y - HERO_H;
       expect(Math.abs(head - (b.y + BLOCK)), `${ev.id} head vs block`).toBeLessThan(2.5);
@@ -79,9 +86,25 @@ describe.each(cases)("%s", (_name, layout) => {
     }
   });
 
-  it("has one event per block, plus item grabs", () => {
-    const blockIds = (layout.blocks ?? []).filter((b) => b.kind !== "star").map((b) => b.id).sort();
-    expect(route.events.filter((e) => e.kind === "block").map((e) => e.id).sort()).toEqual(blockIds);
+  it("lands on every enemy it stomps", () => {
+    for (const ev of route.events.filter((e) => e.kind === "stomp")) {
+      const b = layout.blocks!.find((x) => x.id === ev.id)!;
+      const s = stateAtBeat(route, ev.beat);
+      expect(Math.abs(s.y - b.y), `${ev.id} feet on bug`).toBeLessThan(1.5);
+      expect(Math.abs(s.x - (b.x + BLOCK / 2)), `${ev.id} centred`).toBeLessThan(2);
+    }
+  });
+
+  it("passes through every coin and pellet it shows", () => {
+    const ids = new Set(route.events.map((e) => e.id));
+    for (const c of (layout.blocks ?? []).filter((b) => b.kind === "coin" || b.kind === "pellet")) {
+      expect(ids.has(c.id), c.id).toBe(true);
+    }
+  });
+
+  it("has exactly one event per interactive block", () => {
+    const ids = (layout.blocks ?? []).filter((b) => b.kind !== "star").map((b) => b.id).sort();
+    expect(route.events.filter((e) => e.kind !== "item").map((e) => e.id).sort()).toEqual(ids);
   });
 
   it("is pure (reverse scrolling replays the same poses)", () => {
@@ -138,6 +161,22 @@ describe("specific worlds", () => {
     expect(route.events.map((e) => e.id)).toContain("star");
     expect(route.segments.some((s) => s.step.kind === "slide")).toBe(true);
     expect(stateAtBeat(route, route.total)).toMatchObject({ visible: true, frame: "celebrate" });
+  });
+
+  it("tolerates sub-pixel measurement error (e.g. 47.998 for 48)", () => {
+    expect(buildTree({ width: 47.998, height: 600, knots: [40, 200], sides: [1, -1], acorns: [] })).not.toBeNull();
+    expect(buildFinale({ width: 119.996 })).not.toBeNull();
+  });
+
+  it("jetpack flight stays clear of the ceiling and collects a line of coins", () => {
+    const layout = buildJetpack({ width: 300 })!;
+    const route = compileRoute(layout);
+    expect(route.events.filter((e) => e.kind === "coin").length).toBeGreaterThanOrEqual(10);
+    const fly = route.segments.find((s) => s.step.kind === "fly")!;
+    for (let i = 0; i <= 50; i++) {
+      const st = stateAtBeat(route, fly.b0 + ((fly.b1 - fly.b0) * i) / 50);
+      expect(st.y - HERO_H).toBeGreaterThanOrEqual(10); // zappers live above y = 10
+    }
   });
 
   it("refuses spaces too small to play in", () => {

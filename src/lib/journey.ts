@@ -62,6 +62,8 @@ export interface CharacterState {
   moving: boolean;
   /** Feet stand on a moving platform (elevator / conveyor) at this point. */
   riding?: boolean;
+  /** Sprite scale (0.5 = "mini" top-down size in maze worlds). */
+  scale?: number;
 }
 
 export interface Segment {
@@ -81,7 +83,7 @@ export interface Segment {
 
 export interface RouteEvent {
   beat: number;
-  kind: "block" | "item";
+  kind: "block" | "item" | "stomp" | "coin";
   id: string;
 }
 
@@ -114,6 +116,10 @@ function defaultWeight(step: RouteStep, from: Point, to: Point): number {
       return 1.1;
     case "jump":
       return 1;
+    case "fly":
+      return Math.max(1.5, dx / 40);
+    case "move":
+      return Math.max(0.25, (dx + dy) / 30);
     case "walk":
       return Math.max(0.35, dx / 36);
     case "run":
@@ -172,6 +178,8 @@ export function compileRoute(layout: TrackLayout): CompiledRoute {
       case "jump":
       case "ride":
       case "hide":
+      case "fly":
+      case "move":
         to = step.to;
         break;
       case "climb":
@@ -198,9 +206,19 @@ export function compileRoute(layout: TrackLayout): CompiledRoute {
     acc += weights[i];
     const seg = { ...s, b0, b1: acc, start: b0 / total, end: acc / total };
     if (s.step.kind === "jump" && s.step.bump) events.push({ beat: b0 + weights[i] * 0.5, kind: "block", id: s.step.bump });
+    if (s.step.kind === "jump" && s.step.stomp) events.push({ beat: b0 + weights[i] * 0.97, kind: "stomp", id: s.step.stomp });
+    if (s.step.kind === "idle" && s.step.event) events.push({ beat: b0 + weights[i] * 0.4, kind: "block", id: s.step.event });
     if (s.step.kind === "grab") events.push({ beat: b0 + weights[i] * 0.4, kind: "item", id: s.step.item });
     return seg;
   });
+  // Pass-through collectibles (coins, pellets): the beat where the body crosses them.
+  for (const b of layout.blocks ?? []) {
+    if (b.kind !== "coin" && b.kind !== "pellet") continue;
+    const beat = passBeat(segments, b.x + 4, b.y + 4);
+    if (beat !== null) events.push({ beat, kind: b.kind === "coin" ? "coin" : "block", id: b.id });
+  }
+  events.sort((a, b) => a.beat - b.beat);
+
   const revealIdx = Math.min(layout.revealAfter, segments.length) - 1;
   const last = route[route.length - 1];
   return {
@@ -211,6 +229,58 @@ export function compileRoute(layout: TrackLayout): CompiledRoute {
     endsInPipe: last?.kind === "enter",
     events,
   };
+}
+
+/** Feet position during a jetpack flight (shared by state + coin placement). */
+export function flyPoint(from: Point, to: Point, step: { lift: number; wave?: number; waves?: number; ease?: boolean }, t: number): Point {
+  const x = lerp(from[0], to[0], t);
+  if (step.ease) {
+    // Thrust then glide: smoothstep between the two heights.
+    const e = t * t * (3 - 2 * t);
+    return [x, lerp(from[1], to[1], e)];
+  }
+  const y =
+    lerp(from[1], to[1], t) -
+    step.lift * Math.sin(Math.PI * t) -
+    (step.wave ?? 0) * Math.sin(2 * Math.PI * (step.waves ?? 2) * t) * Math.sin(Math.PI * t);
+  return [x, y];
+}
+
+/**
+ * Beat at which the character's body (16 × 24 above the feet) passes the
+ * point (cx, cy), or null if it never does. Used for coins and pellets.
+ */
+function passBeat(segments: Segment[], cx: number, cy: number): number | null {
+  for (const s of segments) {
+    const k = s.step.kind;
+    if ((k === "climb" || k === "slide") && Math.abs(cx - s.from[0]) <= 6) {
+      // Vertical moves: the body passes cy when the feet are 12 px below it.
+      const feet = cy + 12;
+      const [y0, y1] = [s.from[1], s.to[1]];
+      if (y0 !== y1 && feet >= Math.min(y0, y1) && feet <= Math.max(y0, y1)) return s.b0 + ((feet - y0) / (y1 - y0)) * (s.b1 - s.b0);
+      continue;
+    }
+    if (k === "move") {
+      // Mini (top-down) body: 8 × 12. Moves are axis-aligned.
+      const [x0, y0] = s.from;
+      const [x1, y1] = s.to;
+      const onX = Math.abs(cx - x0) <= 4 && Math.abs(cx - x1) <= 4;
+      const onY = Math.abs(cy + 6 - y0) <= 4 && Math.abs(cy + 6 - y1) <= 4;
+      if (onX && y0 !== y1 && cy + 6 >= Math.min(y0, y1) && cy + 6 <= Math.max(y0, y1)) return s.b0 + ((cy + 6 - y0) / (y1 - y0)) * (s.b1 - s.b0);
+      if (onY && x0 !== x1 && cx >= Math.min(x0, x1) && cx <= Math.max(x0, x1)) return s.b0 + ((cx - x0) / (x1 - x0)) * (s.b1 - s.b0);
+      continue;
+    }
+    if (k !== "walk" && k !== "run" && k !== "ride" && k !== "fly" && k !== "jump") continue;
+    const [x0, x1] = [s.from[0], s.to[0]];
+    if (cx < Math.min(x0, x1) || cx > Math.max(x0, x1) || x0 === x1) continue;
+    const t = (cx - x0) / (x1 - x0);
+    let feet: number;
+    if (k === "fly" && s.step.kind === "fly") feet = flyPoint(s.from, s.to, s.step, t)[1];
+    else if (k === "jump" && s.step.kind === "jump") feet = lerp(s.from[1], s.to[1], t) - (s.step.apex ?? 10) * 4 * t * (1 - t);
+    else feet = lerp(s.from[1], s.to[1], t);
+    if (cy <= feet && cy >= feet - HERO_H) return s.b0 + t * (s.b1 - s.b0);
+  }
+  return null;
 }
 
 const WALK: HeroFrame[] = ["walk1", "walk2", "walk3", "walk4"];
@@ -272,6 +342,16 @@ function segmentState(seg: Segment, t: number): Omit<CharacterState, "arrived"> 
       const frame: HeroFrame = t > 0.94 ? "land" : vy < 0 ? "jump" : "fall";
       return { ...base, moving: true, x, y, frame };
     }
+    case "fly": {
+      const [x, y] = flyPoint(from, to, step, t);
+      return { ...base, moving: true, x, y, frame: t > 0.94 ? "land" : "jump" };
+    }
+    case "move": {
+      const x = lerp(from[0], to[0], t);
+      const y = lerp(from[1], to[1], t);
+      const dist = Math.abs(x - from[0]) + Math.abs(y - from[1]);
+      return { ...base, moving: to[0] !== from[0], x, y, frame: WALK[Math.floor(dist / 2) % 4], scale: 0.5 };
+    }
     case "climb":
     case "slide": {
       const y = lerp(from[1], to[1], t);
@@ -318,7 +398,8 @@ export function stateAtBeat(route: CompiledRoute, beat: number): CharacterState 
  */
 export function standingBeat(route: CompiledRoute, beat: number): number {
   const b = Math.min(Math.max(beat, 0), route.total);
-  const airborne = (k: string) => ["jump", "climb", "slide", "hide", "grab", "emerge", "enter"].includes(k);
+  const airborne = (k: string) => ["jump", "fly", "climb", "slide", "hide", "grab", "emerge", "enter"].includes(k);
+  // Mini (maze) moves are always "standing".
   let idx = route.segments.findIndex((s) => b >= s.b0 && b < s.b1);
   if (idx < 0) idx = route.segments.length - 1;
   if (!airborne(route.segments[idx].step.kind)) return b;
