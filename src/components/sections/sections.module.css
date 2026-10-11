@@ -855,38 +855,6 @@
     linear-gradient(#a7adb8 0 2px, #3a4454 2px 6px, #101419 6px);
 }
 
-/* ---------- Experience: mine-shaft elevator ---------- */
-
-.shaftWrap {
-  --px: calc(min(100vw, 1600px) / 360);
-  --shaft: calc(26 * var(--px));
-  position: relative;
-}
-.shaftWrap > [aria-hidden="true"]:first-child {
-  left: 0;
-  width: var(--shaft);
-}
-.shaft {
-  display: grid;
-  gap: var(--s-6);
-  list-style: none;
-  padding-left: calc(var(--shaft) + var(--s-4));
-}
-.floorPlate {
-  position: absolute;
-  left: calc(-1 * var(--s-4) - 6px);
-  top: 20px;
-  width: calc(var(--s-4) + 6px);
-  height: 4px;
-  background: #5c6f88;
-  box-shadow: 0 2px 0 #2c3542;
-}
-@media (max-width: 639px) {
-  .shaftWrap {
-    --px: calc(100vw / 160);
-  }
-}
-
 /* ---------- Education: academy castle wall ---------- */
 
 .castleWall {
@@ -989,5 +957,57 @@
 @media (prefers-reduced-motion: reduce) {
   .topic {
     animation: none !important;
+  }
+}
+
+/* ---------- About: trainer card + RPG text box ---------- */
+.portrait {
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--s-4);
+  padding: var(--s-2);
+  background: radial-gradient(ellipse at 50% 70%, rgba(132, 155, 184, 0.18), transparent 70%), #0b0e12;
+  border: 2px solid #2c3542;
+}
+.portrait svg {
+  width: 120px;
+  height: auto;
+}
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 2px solid #0b0e12;
+  background: var(--type);
+  color: #101419;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+}
+.rpgDialog {
+  position: relative;
+  padding: var(--s-5);
+  background: #101a2e;
+  border: 4px double #eef1f5;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+}
+.rpgDialog::after {
+  content: "▼";
+  position: absolute;
+  right: 14px;
+  bottom: 8px;
+  font-size: 0.7rem;
+  color: #eef1f5;
+  animation: blinkReady 0.9s steps(1) infinite;
+}
+.rpgDialog .summaryBlock {
+  border-left-color: #3a5878;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rpgDialog::after {
+    animation: none;
   }
 }

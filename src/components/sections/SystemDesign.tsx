@@ -4,7 +4,7 @@ import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SampleNotice, StatusBadge } from "@/components/ui/Status";
 import { ConveyorTrack } from "@/components/journey/ConveyorTrack";
-import { JetpackTrack } from "@/components/journey/JetpackTrack";
+import { LabTrack } from "@/components/games/LabTrack";
 import styles from "./sections.module.css";
 
 export function SystemDesign() {
@@ -69,9 +69,9 @@ export function SystemDesign() {
                 </div>
               </div>
 
-              {/* First machine: jetpack run. The rest: conveyor rides. */}
+              {/* First machine: the jetpack lab. The rest: conveyor rides. */}
               {di === 0 ? (
-                <JetpackTrack id={`jetpack-${d.slug}`} label="Machine room" />
+                <LabTrack id={`lab-${d.slug}`} />
               ) : (
                 <ConveyorTrack id={`conveyor-${d.slug}`} label="Machine room" />
               )}

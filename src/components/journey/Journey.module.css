@@ -529,22 +529,11 @@
 /* ---------- Vertical tracks ---------- */
 
 .trunkStage,
-.shaftStage,
 .laneStage {
   position: absolute;
   top: 0;
   bottom: 0;
   pointer-events: none;
-}
-
-.cab {
-  position: absolute;
-  top: 0;
-  z-index: 1;
-  will-change: transform;
-}
-.cab svg {
-  display: block;
 }
 
 /* Lane: right margin beside its host block (wide screens only). */
@@ -586,11 +575,9 @@
 }
 
 .summary {
-  position: absolute;
-  top: 0;
-  right: 0;
+  /* Drops down below the stage (never over the character). */
+  position: relative;
   z-index: 5;
-  min-width: 200px;
   padding: var(--s-3) var(--s-4);
   background: var(--void-deep);
   border: 2px solid #f2d27a;
@@ -604,6 +591,9 @@
     opacity 300ms steps(3),
     transform 300ms steps(3),
     visibility 0s 300ms;
+}
+.summary:not([data-open="true"]) {
+  display: none;
 }
 .summary[data-open="true"] {
   opacity: 1;
@@ -943,49 +933,6 @@
   }
 }
 
-/* ---------- Pac-Man ghost ---------- */
-.ghostWrap {
-  animation: patrolWide 5s steps(20) infinite alternate;
-}
-@keyframes patrolWide {
-  from {
-    transform: translateX(-18px);
-  }
-  to {
-    transform: translateX(18px);
-  }
-}
-.ghost rect {
-  fill: #e07a8f;
-}
-.ghost .ghostEye {
-  fill: #eef1f5;
-}
-[data-scared="true"] .ghost rect {
-  fill: #3a5bd0;
-}
-[data-scared="true"] .ghost .ghostEye {
-  fill: #f2d27a;
-}
-[data-scared="true"] .ghostWrap {
-  animation-duration: 2s;
-}
-
-/* ---------- Jetpack machine room ---------- */
-.zapper {
-  animation: zap 0.5s steps(2) infinite;
-}
-@keyframes zap {
-  50% {
-    opacity: 0.35;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ghostWrap,
-  .zapper {
-    animation: none;
-  }
-}
 
 /* ---------- Speech bubble ---------- */
 .bubble {
@@ -1179,4 +1126,490 @@
 }
 .skip:hover {
   color: var(--text);
+}
+
+/* ---------- Game actors ---------- */
+.bossWrap,
+.boss {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+}
+.boss {
+  animation: patrol 1.8s steps(8) infinite alternate;
+}
+/* Boss: nested hit markers -1 > -2 > -3 (each stomp flags one level) */
+.block[data-kind="boss"][data-hit="true"] .boss {
+  animation: bossHit1 300ms steps(3);
+}
+.block[data-kind="boss"] > [data-hit="true"] .boss {
+  animation: bossHit2 300ms steps(3);
+}
+.bossWrap[data-hit] .boss {
+  animation: squash 600ms steps(4) forwards;
+}
+.bossWrap[data-hit="done"] .boss {
+  animation: none;
+  opacity: 0;
+}
+.bossWrap[data-hit="true"] .coin {
+  animation: coin 900ms steps(9) forwards;
+}
+@keyframes bossHit1 {
+  50% {
+    filter: brightness(2.2);
+    transform: scaleY(0.8);
+  }
+}
+@keyframes bossHit2 {
+  50% {
+    filter: brightness(2.2) hue-rotate(-30deg);
+    transform: scaleY(0.75);
+  }
+}
+
+.npc {
+  animation: led 1.6s steps(1) infinite;
+  animation-name: npcBob;
+}
+@keyframes npcBob {
+  50% {
+    transform: translateY(-1px);
+  }
+}
+.talk {
+  opacity: 0;
+}
+.block[data-kind="npc"][data-hit] .talk {
+  opacity: 1;
+}
+
+.keyItem {
+  animation: npcBob 1s steps(2) infinite;
+}
+.block[data-kind="key"][data-hit] .keyItem {
+  opacity: 0;
+  transition: opacity 200ms steps(2);
+}
+.block[data-kind="key"][data-hit="true"] .coin {
+  animation: coin 900ms steps(9) forwards;
+}
+
+.gate {
+  transition: transform 500ms steps(5);
+}
+.block[data-kind="door"][data-hit] .gate {
+  transform: translateY(-26px);
+}
+
+.lid {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  transition: transform 300ms steps(3);
+}
+.block[data-kind="chest"][data-hit] .lid {
+  transform: translateY(-3px) rotate(-30deg);
+}
+.glint {
+  opacity: 0;
+}
+.block[data-kind="chest"][data-hit="true"] .glint {
+  animation: powerPop 1400ms steps(8) forwards;
+}
+
+.invader {
+  animation: march 1.6s steps(4) infinite alternate;
+}
+@keyframes march {
+  from {
+    transform: translateX(-3px);
+  }
+  to {
+    transform: translateX(3px);
+  }
+}
+.boom {
+  opacity: 0;
+}
+.block[data-kind="invader"][data-hit] .invader {
+  opacity: 0;
+}
+.block[data-kind="invader"][data-hit="true"] .boom {
+  animation: powerPop 500ms steps(4) forwards;
+}
+.block[data-kind="barrel"][data-hit="true"] .coin {
+  animation: coin 900ms steps(9) forwards;
+}
+
+/* RPG text box (villagers, treasure) */
+.rpgBox {
+  border: 3px double #eef1f5;
+  background: #101a2e;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.55);
+  max-width: min(320px, 72vw);
+}
+.rpgBox .toastTag {
+  color: #a9bdd6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .boss,
+  .npc,
+  .keyItem,
+  .invader {
+    animation: none;
+  }
+}
+
+/* ---------- Click-to-jump, save points, badges ---------- */
+.sprite {
+  transform-origin: 50% 100%;
+}
+.character {
+  pointer-events: none;
+}
+.character .sprite {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.character[data-hop="true"] {
+  animation: hop 380ms steps(4);
+}
+@keyframes hop {
+  50% {
+    margin-top: -18px;
+  }
+}
+/* Bumpable blocks can be clicked */
+.block[data-kind="question"] .bump,
+.block[data-kind="power"] .bump,
+.block[data-kind="acorn"] .bump {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.hudSaved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #f2d27a;
+  opacity: 0;
+}
+.hudSaved[data-show="true"] {
+  animation: saved 2400ms steps(8) forwards;
+}
+@keyframes saved {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.fire {
+  width: 8px;
+  height: 10px;
+  background:
+    linear-gradient(#f2d27a, #e8b84f 60%, #c86b5e);
+  clip-path: polygon(50% 0, 100% 60%, 80% 100%, 20% 100%, 0 60%);
+}
+.badges {
+  margin-top: var(--s-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text);
+}
+.badgesKey {
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+@media (max-width: 760px) {
+  .hudSaved {
+    display: none;
+  }
+}
+
+.continueQ {
+  font-family: var(--font-pixel);
+  font-size: 1.1rem;
+  color: #f2d27a;
+  animation: pressBlink 1s steps(1) infinite;
+}
+
+/* ---------- Atmosphere per world (animates only while in view) ---------- */
+.atmo {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.atmo span {
+  position: absolute;
+  left: calc(var(--i) * 7.3% + 2%);
+  animation-play-state: paused;
+  animation-delay: calc(var(--i) * -1.3s);
+}
+:global([data-inview="true"]) > .backdrop .atmo span {
+  animation-play-state: running;
+}
+/* Fireflies: blinking green-gold dots drifting */
+.atmo[data-atmo="fireflies"] span {
+  width: 3px;
+  height: 3px;
+  background: #d8f08a;
+  box-shadow: 0 0 6px 2px rgba(216, 240, 138, 0.5);
+  animation: firefly 6s steps(24) infinite;
+}
+@keyframes firefly {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.1;
+  }
+  30% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(18px, -24px);
+    opacity: 0.2;
+  }
+  75% {
+    transform: translate(-10px, -40px);
+    opacity: 0.9;
+  }
+}
+/* Clouds: slow pixel puffs */
+.atmo[data-atmo="clouds"] span {
+  width: 48px;
+  height: 12px;
+  background: rgba(167, 173, 184, 0.06);
+  box-shadow:
+    12px -6px 0 rgba(167, 173, 184, 0.06),
+    24px 0 0 rgba(167, 173, 184, 0.06);
+  animation: cloud 40s linear infinite;
+}
+@keyframes cloud {
+  from {
+    transform: translateX(-120px);
+  }
+  to {
+    transform: translateX(160px);
+  }
+}
+/* Sparkles: twinkling plus-shapes */
+.atmo[data-atmo="sparkle"] span {
+  width: 2px;
+  height: 2px;
+  background: #a9bdd6;
+  box-shadow:
+    0 -3px 0 #a9bdd6,
+    0 3px 0 #a9bdd6,
+    -3px 0 0 #a9bdd6,
+    3px 0 0 #a9bdd6;
+  animation: twinkle2 3s steps(3) infinite;
+}
+@keyframes twinkle2 {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+/* Dust: tiny motes sinking through lamplight */
+.atmo[data-atmo="dust"] span {
+  width: 2px;
+  height: 2px;
+  background: rgba(217, 178, 111, 0.45);
+  animation: dust 12s linear infinite;
+}
+@keyframes dust {
+  from {
+    transform: translate(0, -40px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    transform: translate(30px, 120px);
+    opacity: 0;
+  }
+}
+/* Sunset: warm glow + rising embers */
+.atmo[data-atmo="sunset"] {
+  background: linear-gradient(180deg, transparent 40%, rgba(200, 107, 94, 0.08) 75%, rgba(232, 184, 79, 0.1));
+}
+.atmo[data-atmo="sunset"] span {
+  top: auto;
+  bottom: 0;
+  width: 2px;
+  height: 2px;
+  background: #e8b84f;
+  animation: ember 7s linear infinite;
+}
+@keyframes ember {
+  from {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  to {
+    transform: translate(16px, -220px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .atmo span {
+    animation: none !important;
+    opacity: 0.3;
+  }
+}
+
+/* ---------- Finale: fireworks, credits, high scores ---------- */
+.finale {
+  position: relative;
+}
+.fireworks {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 60%;
+  pointer-events: none;
+}
+.fireworks span {
+  position: absolute;
+  left: calc(15% + var(--i) * 17%);
+  top: calc(10% + (var(--i) * 13%));
+  width: 4px;
+  height: 4px;
+  opacity: 0;
+  background: #f2d27a;
+  box-shadow:
+    0 -14px 0 #f2d27a,
+    0 14px 0 #c86b5e,
+    -14px 0 0 #a9bdd6,
+    14px 0 0 #62b06a,
+    10px 10px 0 #e8b84f,
+    -10px -10px 0 #9a7ac0,
+    10px -10px 0 #eef1f5,
+    -10px 10px 0 #5aa9b8;
+}
+.finale:has([data-journey-summary][data-open="true"]) .fireworks span {
+  animation: burst 1.6s steps(8) infinite;
+  animation-delay: calc(var(--i) * 0.35s);
+}
+@keyframes burst {
+  0% {
+    opacity: 1;
+    transform: scale(0.2);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+.afterStar {
+  display: none;
+  gap: var(--s-4);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.finale:has([data-journey-summary][data-open="true"]) .afterStar {
+  display: grid;
+}
+.credits {
+  position: relative;
+  height: 150px;
+  overflow: hidden;
+  background: #0b0e12;
+  border: 2px solid #2c3542;
+  -webkit-mask-image: linear-gradient(transparent, #000 20%, #000 80%, transparent);
+  mask-image: linear-gradient(transparent, #000 20%, #000 80%, transparent);
+}
+.creditsRoll {
+  display: grid;
+  gap: 6px;
+  padding: 150px var(--s-3) var(--s-3);
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  animation: roll 14s linear infinite;
+}
+.creditsRoll p:nth-child(even) {
+  color: #f2d27a;
+}
+@keyframes rollCredits {
+  to {
+    transform: translateY(-100%);
+  }
+}
+.creditsRoll {
+  animation-name: rollCredits;
+}
+.scores {
+  display: grid;
+  gap: var(--s-3);
+  align-content: start;
+  padding: var(--s-3);
+  background: #0b0e12;
+  border: 2px solid #2c3542;
+}
+.initialsForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+.initialsLabel {
+  width: 100%;
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: #f2d27a;
+  text-transform: uppercase;
+}
+.initialsInput {
+  width: 5ch;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 2px solid var(--steel);
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-pixel);
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.initialsHint {
+  width: 100%;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+.scoreTable {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  color: var(--text);
+}
+.scoreTable li {
+  display: flex;
+  gap: 10px;
+}
+@media (max-width: 520px) {
+  .afterStar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .creditsRoll,
+  .finale:has([data-journey-summary][data-open="true"]) .fireworks span {
+    animation: none;
+  }
+  .creditsRoll {
+    padding-top: var(--s-3);
+  }
 }

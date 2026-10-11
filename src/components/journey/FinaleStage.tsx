@@ -4,6 +4,7 @@ import { buildFinale, FINALE_H, finaleGeometry } from "@/lib/tracks";
 import type { ConfigurableLink } from "@/data/types";
 import { TrackScene } from "./TrackScene";
 import { useTrack } from "./useTrack";
+import { HighScores } from "./HighScores";
 import styles from "./Journey.module.css";
 
 /**
@@ -58,34 +59,64 @@ export function FinaleStage({ links }: { links: (ConfigurableLink & { href: stri
             }
           />
         )}
-        {/* Journey summary drop-down (filled + opened when the star is touched) */}
-        <div className={styles.summary} data-journey-summary role="status" aria-live="polite">
-          <p className={styles.summaryTitle}>
-            <span aria-hidden="true">★</span> Your journey
-          </p>
-          <dl>
-            <div>
-              <dt>Points</dt>
-              <dd data-sum="score">0</dd>
-            </div>
-            <div>
-              <dt>Distance</dt>
-              <dd data-sum="distance">0m</dd>
-            </div>
-            <div>
-              <dt>Worlds</dt>
-              <dd data-sum="worlds">0/6</dd>
-            </div>
-            <div>
-              <dt>Blocks</dt>
-              <dd data-sum="blocks">0</dd>
-            </div>
-            <div>
-              <dt>Coins</dt>
-              <dd data-sum="coins">0</dd>
-            </div>
-          </dl>
+      </div>
+      {/* Fireworks + credits roll + high scores appear once the star is touched */}
+      <div className={styles.fireworks} aria-hidden="true">
+        {Array.from({ length: 5 }, (_, i) => (
+          <span key={i} style={{ "--i": i } as React.CSSProperties} />
+        ))}
+      </div>
+          {/* Journey summary drop-down (filled + opened when the star is touched) */}
+          <div className={styles.summary} data-journey-summary role="status" aria-live="polite">
+            <p className={styles.summaryTitle}>
+              <span aria-hidden="true">★</span> Your journey
+            </p>
+            <dl>
+              <div>
+                <dt>Points</dt>
+                <dd data-sum="score">0</dd>
+              </div>
+              <div>
+                <dt>Distance</dt>
+                <dd data-sum="distance">0m</dd>
+              </div>
+              <div>
+                <dt>Worlds</dt>
+                <dd data-sum="worlds">0/6</dd>
+              </div>
+              <div>
+                <dt>Blocks</dt>
+                <dd data-sum="blocks">0</dd>
+              </div>
+              <div>
+                <dt>Coins</dt>
+                <dd data-sum="coins">0</dd>
+              </div>
+              <div>
+                <dt>Time</dt>
+                <dd data-sum="time">00:00</dd>
+              </div>
+            </dl>
+            <p className={styles.badges}>
+              <span className={styles.badgesKey}>Badges</span> <span data-sum-badges>—</span>
+            </p>
+          </div>
+      <div className={styles.afterStar}>
+        <div className={styles.credits} aria-hidden="true">
+          <div className={styles.creditsRoll}>
+            <p>★ Thank you for playing ★</p>
+            <p>Starring</p>
+            <p>Anish Karthikeyan</p>
+            <p>Worlds</p>
+            <p>Projects · About · Skills</p>
+            <p>Experience · Contact</p>
+            <p>Built with</p>
+            <p>Next.js · React · TypeScript</p>
+            <p>Original pixel art · SVG</p>
+            <p>Press ` for the terminal</p>
+          </div>
         </div>
+        <HighScores />
       </div>
       {links.length > 0 && (
         <ul className={styles.warpLinks} aria-label="Contact links">

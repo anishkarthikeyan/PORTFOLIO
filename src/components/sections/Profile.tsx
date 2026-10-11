@@ -5,6 +5,18 @@ import { StatusBadge } from "@/components/ui/Status";
 import { SummarySwitch } from "./SummarySwitch";
 import { Corridor } from "@/components/journey/Corridor";
 import { LaneTrack } from "@/components/journey/LaneTrack";
+import { PixelSprite } from "@/components/pixel/PixelSprite";
+import { CHARACTER, CHARACTER_EYES, CHARACTER_PALETTE } from "@/components/pixel/sprites";
+
+/** Head-and-shoulders portrait of the character for the trainer card. */
+const PORTRAIT = CHARACTER.slice(0, 30).map((row, y) =>
+  row
+    .split("")
+    .map((c, x) => (CHARACTER_EYES[y][x] !== "." ? CHARACTER_EYES[y][x] : c))
+    .join(""),
+);
+/** Type-badge colours for focus areas (Pokémon-style "types"). */
+const TYPE_COLORS = ["#5aa9b8", "#d9b26f", "#9a7ac0", "#62b06a", "#c86b5e", "#6b86c8"];
 import styles from "./sections.module.css";
 
 export function Profile() {
@@ -25,11 +37,14 @@ export function Profile() {
 
           <aside data-anchor className={`panel ${styles.statCard} ${styles.arcade}`} aria-label="Profile facts">
             <p className={styles.statHead}>
-              <span className="pixel">Player 1</span>
+              <span className="pixel">Trainer card</span>
               <span className={styles.ready} aria-hidden="true">
-                ▶ Ready
+                ▶ Player 1
               </span>
             </p>
+            <div className={styles.portrait} aria-hidden="true">
+              <PixelSprite rows={PORTRAIT} palette={CHARACTER_PALETTE} scale={3} />
+            </div>
             <dl className={styles.stats}>
               <div>
                 <dt>Name</dt>
@@ -50,11 +65,11 @@ export function Profile() {
                 <dd>Expected {edu.expectedGraduation}</dd>
               </div>
               <div>
-                <dt>Focus</dt>
+                <dt>Types</dt>
                 <dd>
                   <ul className="chip-list">
-                    {profile.focusAreas.map((f) => (
-                      <li key={f} className="chip">
+                    {profile.focusAreas.map((f, i) => (
+                      <li key={f} className={styles.typeBadge} style={{ "--type": TYPE_COLORS[i % TYPE_COLORS.length] } as React.CSSProperties}>
                         {f}
                       </li>
                     ))}
@@ -75,8 +90,7 @@ export function Profile() {
               label="Player select"
               theme="select"
               stopSelector="[data-unlock-id^='int-']"
-              stopKind="pellet"
-              dots
+              stopKind="npc"
               blocks={interests.map((i, k) => ({ id: `int-${k}`, unlock: `int-${k}`, label: i.text }))}
               pedestal
             />

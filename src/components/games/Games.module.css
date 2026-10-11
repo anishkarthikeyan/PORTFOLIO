@@ -1,0 +1,133 @@
+/* Shared game stage: height follows the journey pixel scale. */
+.stage {
+  position: relative;
+  height: calc(var(--h) * min(100vw, 1600px) / 360);
+  margin-block: var(--s-3);
+  pointer-events: none;
+}
+@media (max-width: 639px) {
+  .stage {
+    height: calc(var(--h) * 100vw / 160);
+  }
+}
+
+/* ---------- Maze ---------- */
+.mazeWrap {
+  margin-block: var(--s-4);
+}
+.mazeBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+.mazeTag {
+  font-family: var(--font-pixel);
+  font-size: 0.6875rem;
+  color: #f2d27a;
+  text-transform: uppercase;
+}
+.bfsBtn[aria-pressed="true"] {
+  border-color: var(--steel);
+  background: rgba(132, 155, 184, 0.12);
+}
+.bfsNote {
+  margin-top: var(--s-2);
+  max-width: 70ch;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.wall {
+  fill: #1c2c48;
+}
+.wallHi {
+  fill: #3a5878;
+}
+.bfsNum {
+  fill: #eef1f5;
+  font-family: var(--font-pixel);
+  font-size: 4px;
+  text-anchor: middle;
+}
+.ghost rect {
+  fill: var(--ghost);
+}
+.ghost .eye {
+  fill: #eef1f5;
+}
+/* Power pellet eaten: ghosts turn blue */
+[data-scared="true"] .ghost rect {
+  fill: #3a5bd0;
+}
+[data-scared="true"] .ghost .eye {
+  fill: #f2d27a;
+}
+/* Caught: only the eyes remain, drifting home */
+.ghostChaser[data-hit] .ghost rect:not(.eye) {
+  opacity: 0;
+}
+.ghostChaser[data-hit] {
+  transition: opacity 600ms steps(4) 600ms;
+  opacity: 0;
+}
+
+/* ---------- Lab ---------- */
+.beam {
+  animation: crackle 0.25s steps(2) infinite;
+}
+@keyframes crackle {
+  50% {
+    opacity: 0.35;
+  }
+}
+.blink {
+  animation: crackle 0.8s steps(1) infinite;
+}
+.warning {
+  animation: crackle 0.3s steps(1) infinite;
+}
+
+/* ---------- Girders ---------- */
+.girderLabel {
+  fill: var(--text-2);
+  font-family: var(--font-pixel);
+  font-size: 3.6px;
+  letter-spacing: 0.3px;
+}
+.barrel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: roll 0.4s steps(4) infinite;
+}
+@keyframes roll {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.arm {
+  animation: crackle 0.9s steps(1) infinite;
+}
+
+/* ---------- Dungeon ---------- */
+.flame {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: flicker 0.5s steps(2) infinite;
+}
+@keyframes flicker {
+  50% {
+    transform: scaleY(0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beam,
+  .blink,
+  .warning,
+  .barrel,
+  .arm,
+  .flame {
+    animation: none;
+  }
+}

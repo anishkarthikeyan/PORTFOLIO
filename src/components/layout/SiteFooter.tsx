@@ -1,5 +1,6 @@
 import { education, links, profile } from "@/data/portfolio";
 import { configuredLinks, isConfigured, isExternal, NAV_ITEMS } from "@/lib/content";
+import { WarpZone } from "./WarpZone";
 import styles from "./SiteFooter.module.css";
 
 export function SiteFooter() {
@@ -37,9 +38,10 @@ export function SiteFooter() {
             ))}
           </ul>
         </nav>
+        <WarpZone />
         <p className={styles.fine}>
           Pixel art and code are original. Content marked SAMPLE is demonstration material, not verified information.
-          Press <kbd>`</kbd> for the terminal.
+          Press <kbd>`</kbd> for the terminal and <kbd>M</kbd> for the world map. There may be a secret or two.
         </p>
       </div>
     </footer>

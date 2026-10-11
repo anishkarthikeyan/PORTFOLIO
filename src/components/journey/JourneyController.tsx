@@ -108,9 +108,16 @@ export function JourneyController() {
     const visited = new Set<number>();
     let warp: { phase: "sink" | "rise"; t0: number; to: number } | null = null;
     /** Active power-up (lasts for the rest of the world it was found in). */
+    /** world -1 = cheat power-up, active until `cheatUntil`. */
     let power: { kind: "coffee" | "jetpack" | "star"; world: number } | null = null;
     let hits = 0;
     let coins = 0;
+    let totalCoins = 0;
+    let bossDown = false;
+    let tStart = 0;
+    let tEnd = 0;
+    let maxSavedWorld = 0;
+    let cheatUntil = 0;
     let lastSeg = "";
     const timers: ReturnType<typeof setTimeout>[] = [];
     let lastWorldKey = "";
@@ -192,6 +199,7 @@ export function JourneyController() {
         t.route.events.map((e) => ({ beat: map.tracks[i].offset + e.beat, kind: e.kind, id: e.id, track: i })),
       );
       totalBlocks = events.filter((e) => e.kind === "block" || e.kind === "stomp").length;
+      totalCoins = events.filter((e) => e.kind === "coin").length;
       // Re-apply collected blocks to freshly rendered scenery (no animation).
       collected.forEach((id) => {
         document.querySelectorAll<HTMLElement>(`[data-block-id="${id}"]`).forEach((b) => (b.dataset.hit = "done"));
@@ -220,9 +228,11 @@ export function JourneyController() {
       const top = tr.top + (state.y - HERO_H) * s;
       char.style.transform = `translate3d(${left.toFixed(1)}px, ${top.toFixed(1)}px, 0)`;
       sprite.style.setProperty("--fx", `${-HERO_FRAME_INDEX[state.frame] * HERO_W * s}px`);
-      sprite.style.transform = facing < 0 ? "scaleX(-1)" : "";
+      // Mini (maze) size scales around the feet; clip is measured on the scaled body.
+      const k = state.scale ?? 1;
+      sprite.style.transform = k !== 1 || facing < 0 ? `scale(${facing < 0 ? -k : k}, ${k})` : "";
       const clip = Math.max(state.clip, warpClip);
-      sprite.style.clipPath = clip > 0 ? `inset(0 0 ${(clip * s).toFixed(1)}px 0)` : "";
+      sprite.style.clipPath = clip > 0 ? `inset(0 0 ${((clip / k) * s).toFixed(1)}px 0)` : "";
       char.dataset.frame = state.frame;
       if (reduce && index !== lastActive) {
         char.dataset.visible = "false";
@@ -273,6 +283,18 @@ export function JourneyController() {
       set("worlds", `${visited.size}/${new Set(tracks.map((t) => t.handle.world)).size}`);
       set("blocks", `${hits}/${totalBlocks}`);
       set("coins", `${coins}`);
+      const secs = Math.round(((tEnd || performance.now()) - (tStart || performance.now())) / 1000);
+      set("time", `${pad(secs / 60, 2)}:${pad(secs % 60, 2)}`);
+      const worldsTotal = new Set(tracks.map((t) => t.handle.world)).size;
+      const badges = [
+        visited.size >= worldsTotal && "Explorer",
+        hits >= totalBlocks && "Completionist",
+        totalCoins > 0 && coins >= totalCoins * 0.8 && "Coin hoarder",
+        bossDown && "Bug slayer",
+        secs > 0 && secs < 90 && "Speedrunner",
+      ].filter(Boolean) as string[];
+      const list = el.querySelector("[data-sum-badges]");
+      if (list) list.textContent = badges.length ? badges.join(" · ") : "Keep exploring!";
     };
 
     /** Show a speech bubble above the character for a moment. */
@@ -297,7 +319,32 @@ export function JourneyController() {
         play(e.id.includes("-dot-") ? "waka" : "coin");
       } else if (e.kind === "stomp") {
         hits++;
-        play("stomp");
+        if (spec?.kind === "boss" && e.id.endsWith("-3")) {
+          bossDown = true;
+          play("boss");
+        } else play("stomp");
+      } else if (spec?.kind === "npc") {
+        hits++;
+        play("talk");
+      } else if (spec?.kind === "key") {
+        hits++;
+        play("key");
+      } else if (spec?.kind === "door") {
+        hits++;
+        play("pipe");
+      } else if (spec?.kind === "chest") {
+        hits++;
+        play("chest");
+      } else if (spec?.kind === "invader") {
+        hits++;
+        play("shoot");
+      } else if (spec?.kind === "barrel") {
+        hits++;
+        play("coin");
+      } else if (spec?.kind === "ghost") {
+        hits++;
+        play("powerup");
+        say("Gotcha, ghost!");
       } else if (spec?.kind === "pellet") {
         hits++;
         coins++;
@@ -311,6 +358,7 @@ export function JourneyController() {
         play("powerup");
       } else if (e.id === "star") {
         play("powerup");
+        tEnd = tEnd || performance.now();
       } else {
         hits++;
         play("bump");
@@ -339,7 +387,10 @@ export function JourneyController() {
       map.tracks.forEach((mt, i) => {
         if (displayed > mt.offset) visited.add(tracks[i].handle.world);
       });
-      if (displayed > 0.01) started = true;
+      if (displayed > 0.01 && !started) {
+        started = true;
+        tStart = performance.now();
+      }
 
       let state = reduce ? restState(tr.route, tr.handle.layout) : stateAtBeat(tr.route, local);
       // Catching up: walks become a visible sprint.
@@ -386,7 +437,8 @@ export function JourneyController() {
         else if (k === "slide") play("flag");
       }
       lastSeg = segKey;
-      if (power && power.world !== tr.handle.world) power = null;
+      if (power && power.world !== tr.handle.world && power.world !== -1) power = null;
+      if (power && power.world === -1 && now > cheatUntil) power = null;
       char.dataset.power = power && !reduce ? power.kind : "";
       char.dataset.flying = seg?.step.kind === "fly" ? "true" : "false";
 
@@ -403,6 +455,25 @@ export function JourneyController() {
           el.dataset.current = w === tr.handle.world ? "true" : "false";
           el.dataset.visited = visited.has(w) ? "true" : "false";
         });
+        // Save point: reaching a new world saves progress (this browser only).
+        if (tr.handle.world > maxSavedWorld && started && !reduce) {
+          const prevSaved = maxSavedWorld;
+          maxSavedWorld = tr.handle.world;
+          try {
+            localStorage.setItem("anish.save", JSON.stringify({ world: tr.handle.world }));
+          } catch {
+            /* storage unavailable */
+          }
+          if (prevSaved > 0) {
+            play("save");
+            hud?.setAttribute("data-saved", String(now));
+            const savedEl = hud?.querySelector<HTMLElement>("[data-hud-saved]");
+            if (savedEl) {
+              savedEl.dataset.show = "false";
+              requestAnimationFrame(() => (savedEl.dataset.show = "true"));
+            }
+          }
+        }
         // The character announces each new world once.
         if (tr.handle.world !== lastWorldSaid && started && !reduce) {
           lastWorldSaid = tr.handle.world;
@@ -535,6 +606,8 @@ export function JourneyController() {
       const reduce = reduceMq.matches;
       for (const z of scenery.stars) {
         const near = z.top < y + vh && z.top + z.h > y;
+        const zone = z.el.closest<HTMLElement>("[data-zone]");
+        if (zone) zone.dataset.inview = near ? "true" : "false";
         z.el.style.transform = !reduce && near ? `translate3d(0, ${((y + vh / 2 - (z.top + z.h / 2)) * 0.12).toFixed(1)}px, 0)` : "";
       }
       for (const f of scenery.far) {
@@ -612,6 +685,34 @@ export function JourneyController() {
         });
     };
 
+    // Terminal cheats (e.g. iddqd → star power for 20s).
+    const onCheat = (e: Event) => {
+      const d = (e as CustomEvent<{ power?: "star" }>).detail;
+      if (d?.power) {
+        power = { kind: d.power, world: -1 };
+        cheatUntil = performance.now() + 20000;
+        play("powerup");
+        say("Star power!");
+        start();
+      }
+    };
+    // Click a "?" block to bump it yourself; click the character to make it jump.
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as Element | null;
+      const block = t?.closest?.("[data-block-id]") as HTMLElement | null;
+      if (block && ["question", "power", "acorn"].includes(block.dataset.kind ?? "")) {
+        const ev = events.find((x) => x.id === block.dataset.blockId);
+        if (ev) collect(ev);
+        return;
+      }
+      if (t && char.contains(t)) {
+        char.dataset.hop = "false";
+        requestAnimationFrame(() => (char.dataset.hop = "true"));
+        play("jump");
+      }
+    };
+    window.addEventListener("anish:cheat", onCheat);
+    document.addEventListener("click", onClick);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", scheduleMeasure);
     window.addEventListener("pageshow", scheduleMeasure);
@@ -622,6 +723,8 @@ export function JourneyController() {
 
     return () => {
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("anish:cheat", onCheat);
+      document.removeEventListener("click", onClick);
       window.removeEventListener("resize", scheduleMeasure);
       window.removeEventListener("pageshow", scheduleMeasure);
       reduceMq.removeEventListener("change", onMotionChange);

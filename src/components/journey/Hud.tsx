@@ -20,6 +20,9 @@ export function Hud() {
         <span className={styles.hudKey}>Dist</span>
         <span data-hud-distance>0000m</span>
       </span>
+      <span className={styles.hudSaved} data-hud-saved data-show="false">
+        <span className={styles.fire} /> Progress saved
+      </span>
       <span className={`${styles.hudItem} ${styles.hudWorld}`}>
         <span className={styles.hudKey}>World</span>
         <span data-hud-world>1</span>

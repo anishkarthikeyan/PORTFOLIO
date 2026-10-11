@@ -1,7 +1,7 @@
 import { education } from "@/data/portfolio";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { DevPlaceholder, StatusBadge } from "@/components/ui/Status";
-import { Corridor } from "@/components/journey/Corridor";
+import { DungeonTrack } from "@/components/games/DungeonTrack";
 import styles from "./sections.module.css";
 
 function OptionalList({ title, items, hint }: { title: string; items: string[]; hint: string }) {
@@ -34,16 +34,9 @@ export function Education() {
     <section id="education" className="section" aria-labelledby="education-title">
       <div className="container">
         <SectionHeader id="education-title" index="07" eyebrow="Education" title="Education" />
-        <Corridor
-          id="castle"
-          world={5}
-          label="Academy castle"
-          theme="castle"
-          extras={[
-            { at: 0.36, kind: "bug" },
-            { at: 0.7, kind: "bug" },
-          ]}
-          banner={`EXPECTED ${education[0]?.expectedGraduation ?? ""}`.trim()}
+        <DungeonTrack
+          id="academy"
+          prize={`${education[0]?.degree ?? ""} ${education[0]?.field ?? ""} · ${education[0]?.institution ?? ""} · Expected ${education[0]?.expectedGraduation ?? ""}`}
         />
         <ul className={styles.eduList}>
           {education.map((e) => (

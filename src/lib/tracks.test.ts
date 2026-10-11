@@ -8,9 +8,7 @@ import {
   BLOCK,
   buildConveyor,
   buildCorridor,
-  buildElevator,
   buildFinale,
-  buildJetpack,
   buildTree,
   vehicleAt,
 } from "./tracks";
@@ -26,11 +24,9 @@ const cases: [string, TrackLayout | null][] = [
   ["corridor: castle with bugs", buildCorridor({ width: 320, stops: [{ x: 110, kind: "bug" }, { x: 230, kind: "bug" }], gaps: battlementGaps(320), ground: "block" })],
   ["corridor: island with bug + power-up", buildCorridor({ id: "isl", width: 320, stops: [{ x: 70, kind: "power", block: { id: "p", power: "coffee", label: "COFFEE" } }, { x: 150, kind: "bug" }, { x: 240, kind: "block", block: block("b") }] })],
   ["corridor: pac-man dots + pellets", buildCorridor({ id: "pac", width: 320, dots: true, stops: [{ x: 90, kind: "pellet", block: block("i1") }, { x: 170, kind: "pellet", block: block("i2") }, { x: 250, kind: "pedestal" }] })],
-  ["jetpack", buildJetpack({ width: 300 })],
   ["corridor: no pipes (static)", buildCorridor({ width: 200, stops: [], exit: false, entry: false })],
   ["tree: both sides", buildTree({ width: 48, height: 600, knots: [40, 150, 260, 380, 500], sides: [1, -1, 1, -1, 1], acorns: ["a", "b", "c", "d", "e"].map(block) })],
   ["tree: compact one side", buildTree({ width: 36, height: 520, knots: [50, 140, 240, 330, 430], sides: [1, 1, 1, 1, 1], acorns: ["a", "b", "c", "d", "e"].map(block) })],
-  ["elevator", buildElevator({ width: 26, height: 500, floors: [70, 220, 360] })],
   ["conveyor", buildConveyor({ width: 260 })],
   ["finale: narrow", buildFinale({ width: 122 })],
   ["finale: wide", buildFinale({ width: 200 })],
@@ -141,16 +137,14 @@ describe("specific worlds", () => {
     expect(compileRoute(layout).segments.filter((s) => s.step.kind === "emerge").length).toBe(2);
   });
 
-  it("elevator cab parks at floors and follows rides", () => {
-    const layout = buildElevator({ width: 26, height: 500, floors: [70, 220, 360] })!;
+  it("vehicles park before rides and follow them (conveyor belt)", () => {
+    const layout = buildConveyor({ width: 260 })!;
     const route = compileRoute(layout);
-    expect(vehicleAt(route, 0)!.y).toBe(70);
-    const rides = route.segments.filter((s) => s.step.kind === "ride");
-    expect(vehicleAt(route, rides[0].b1)!.y).toBeCloseTo(220);
-    expect(vehicleAt(route, route.total)!.y).toBeCloseTo(layout.height - 4);
-    // Character stands on the cab while riding
-    const mid = (rides[0].b0 + rides[0].b1) / 2;
-    expect(stateAtBeat(route, mid).y).toBeCloseTo(vehicleAt(route, mid)!.y);
+    const ride = route.segments.find((s) => s.step.kind === "ride")!;
+    expect(vehicleAt(route, 0)!.x).toBe(ride.from[0]);
+    const mid = (ride.b0 + ride.b1) / 2;
+    expect(stateAtBeat(route, mid).x).toBeCloseTo(vehicleAt(route, mid)!.x);
+    expect(vehicleAt(route, route.total)!.x).toBe(ride.to[0]);
   });
 
   it("finale climbs three bricks upward, grabs the star, slides the pole, ends visible", () => {
@@ -168,20 +162,8 @@ describe("specific worlds", () => {
     expect(buildFinale({ width: 119.996 })).not.toBeNull();
   });
 
-  it("jetpack flight stays clear of the ceiling and collects a line of coins", () => {
-    const layout = buildJetpack({ width: 300 })!;
-    const route = compileRoute(layout);
-    expect(route.events.filter((e) => e.kind === "coin").length).toBeGreaterThanOrEqual(10);
-    const fly = route.segments.find((s) => s.step.kind === "fly")!;
-    for (let i = 0; i <= 50; i++) {
-      const st = stateAtBeat(route, fly.b0 + ((fly.b1 - fly.b0) * i) / 50);
-      expect(st.y - HERO_H).toBeGreaterThanOrEqual(10); // zappers live above y = 10
-    }
-  });
-
   it("refuses spaces too small to play in", () => {
     expect(buildCorridor({ width: 60, stops: [] })).toBeNull();
     expect(buildFinale({ width: 100 })).toBeNull();
-    expect(buildElevator({ width: 10, height: 400, floors: [] })).toBeNull();
   });
 });

@@ -66,6 +66,7 @@ export function Terminal() {
       }
       push([{ prompt: raw }, ...result.lines.map((line) => ({ line }))]);
       if (raw.trim()) setHistory((h) => [...h, raw.trim()].slice(-50));
+      if (result.cheat) window.dispatchEvent(new CustomEvent("anish:cheat", { detail: { power: result.cheat } }));
       if (result.navigate) {
         const href = result.navigate;
         setTimeout(() => {

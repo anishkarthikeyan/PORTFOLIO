@@ -4,9 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { play, setSound } from "@/lib/sfx";
 import { PixelSprite } from "@/components/pixel/PixelSprite";
 import { HERO_FRAMES, HERO_PALETTE } from "./heroSprite";
+import { WORLD_NAV } from "@/data/worldNav";
 import styles from "./Journey.module.css";
 
 const SEEN_KEY = "anish.started";
+const SAVE_KEY = "anish.save";
 
 /**
  * "Press Start" title screen shown once per browser on the home page.
@@ -16,26 +18,36 @@ const SEEN_KEY = "anish.started";
  */
 export function TitleScreen() {
   const [show, setShow] = useState(false);
+  /** World to continue from (returning visitors with a save point). */
+  const [cont, setCont] = useState<number | null>(null);
   const [leaving, setLeaving] = useState(false);
   const startRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let seen = false;
+    let saved = 0;
     try {
       seen = localStorage.getItem(SEEN_KEY) === "1";
+      saved = Number(JSON.parse(localStorage.getItem(SAVE_KEY) ?? "{}").world) || 0;
     } catch {
       /* private mode: treat as not seen, but don't block */
     }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (seen || reduce || window.location.hash) return;
+    if (reduce || window.location.hash) return;
+    if (seen && saved < 2) return;
+    const savedWorld = seen ? saved : null;
     // Decide after mount so returning visitors never see a flash.
-    const id = requestAnimationFrame(() => setShow(true));
+    const id = requestAnimationFrame(() => {
+      setCont(savedWorld);
+      setShow(true);
+    });
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const finish = useCallback((withSound: boolean) => {
+  const finish = useCallback((withSound: boolean, goTo?: string) => {
     try {
       localStorage.setItem(SEEN_KEY, "1");
+      if (goTo === "#home") localStorage.removeItem(SAVE_KEY);
     } catch {
       /* ignore */
     }
@@ -44,7 +56,8 @@ export function TitleScreen() {
     setLeaving(true);
     setTimeout(() => {
       setShow(false);
-      document.getElementById("main")?.focus({ preventScroll: true });
+      if (goTo && goTo !== "#home") window.location.hash = goTo;
+      else document.getElementById("main")?.focus({ preventScroll: true });
     }, 900);
   }, []);
 
@@ -74,9 +87,26 @@ export function TitleScreen() {
           <PixelSprite rows={[...HERO_FRAMES.idle]} palette={HERO_PALETTE} scale={6} />
           <div className={styles.titleGround} />
         </div>
-        <button ref={startRef} type="button" className={styles.pressStart} onClick={() => finish(true)}>
-          <span aria-hidden="true">▶</span> Press start
-        </button>
+        {cont ? (
+          <>
+            <p className={styles.continueQ}>Continue?</p>
+            <button
+              ref={startRef}
+              type="button"
+              className={styles.pressStart}
+              onClick={() => finish(true, `#${WORLD_NAV.find((w) => w.world === cont)?.href.split("#")[1] ?? "home"}`)}
+            >
+              <span aria-hidden="true">▶</span> World {cont} · {WORLD_NAV.find((w) => w.world === cont)?.title}
+            </button>
+            <button type="button" className={styles.skip} onClick={() => finish(true, "#home")}>
+              New game
+            </button>
+          </>
+        ) : (
+          <button ref={startRef} type="button" className={styles.pressStart} onClick={() => finish(true)}>
+            <span aria-hidden="true">▶</span> Press start
+          </button>
+        )}
         <p className={styles.titleSound}>Sound on · scroll to play · press M for the world map</p>
         <button type="button" className={styles.skip} onClick={() => finish(false)}>
           Skip to portfolio

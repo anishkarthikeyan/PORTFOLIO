@@ -39,8 +39,11 @@ export interface PipeSpec {
 export type RouteStep =
   | { kind: "emerge"; weight?: number; /** Named hole instead of the exit pipe. */ from?: string }
   | { kind: "walk" | "run"; to: number; weight?: number }
-  /** `bump` names a block hit from below at the top of the arc; `stomp` an enemy landed on. */
-  | { kind: "jump"; to: Point; apex?: number; weight?: number; bump?: string; stomp?: string }
+  /**
+   * `bump` names a block hit from below at the top of the arc; `stomp` an
+   * enemy landed on; `over` something jumped over (a barrel).
+   */
+  | { kind: "jump"; to: Point; apex?: number; weight?: number; bump?: string; stomp?: string; over?: string }
   /**
    * Jetpack flight: an arc of height `lift` with `waves` wobbles, or with
    * `ease` a thrust/gravity curve between two heights (lab dodging).
@@ -85,6 +88,9 @@ export interface BlockSpec {
     | "npc"
     | "key"
     | "chest"
+    | "door"
+    | "ghost"
+    | "barrel"
     | "invader";
   /** Power-up released by a `power` block. */
   power?: "coffee" | "jetpack" | "star";
@@ -136,6 +142,10 @@ export interface BandLayout {
   blocks?: BlockSpec[];
   /** Extra openings the character can enter/emerge from (tree knot holes). */
   holes?: Record<string, PipeSpec>;
+  /** Draw the character at half size (top-down maze worlds). */
+  mini?: boolean;
+  /** Game-specific geometry for renderers and tests (maze walls, zappers…). */
+  meta?: Record<string, unknown>;
 }
 
 /** Any track the character can travel along (bands, corridors, tree, …). */

@@ -121,17 +121,22 @@ One pixel character travels through the whole home page. Every section is part o
 - **Work only happens while the character is moving.** Nothing runs while idle.
 - **Each track measures itself** from the real layout (`useTrack`) and registers with the single `JourneyController`. "?" blocks line up with the cards they unlock.
 
-**Each world plays differently** (original art; inspired by classic games)
+**Each world plays differently** (watch layer: the character plays as you scroll; original art inspired by classic games)
 
-| World | Mechanic |
-| --- | --- |
-| Projects | Bugs to stomp, a coffee power-up (glow), "?" blocks per project; "Enter level" opens a case study as a level |
-| About | Pac-Man dots, power pellets per interest, a ghost that turns blue |
-| Skill tree | Climb the trunk via vines and knot holes, collecting leaf coins and acorns |
-| DSA | Topic tiles drop in Tetris-style, with lock sounds and a line clear |
-| System design | Jetpack power-up: fly past zappers collecting coins (first machine), conveyor rides after |
-| Education / Achievements | Elevator floors, castle battlements with bugs, star power in the trophy room |
-| Contact | Stair bricks → star → journey summary → flagpole → portal |
+| World | Game | What happens |
+| --- | --- | --- |
+| Map | Overworld | Walks the world map node to node |
+| Projects | Mario | Stomp bugs, coffee power-up, "?" blocks per project, a 3-stomp **Final Bug** mini-boss; "Enter level" opens a case study |
+| About | Pokémon / RPG | Trainer card (portrait + focus areas as "types"), summary typed in an RPG text box, villagers to talk to (one per interest) |
+| Skill tree | Jungle climb | Vines, knot holes, leaf coins, acorns |
+| DSA | **Pac-Man** | A real grid maze (mini character) — dots, power pellet, ghosts; a chaser turns blue and gets caught. **Show ghost BFS** overlays the breadth-first-search step counts |
+| System design | **Jetpack lab** | Grab the jetpack, thrust/fall between zappers at different heights, coin trails, a warned missile (first design); conveyor ride after |
+| Experience | **Donkey Kong** | Girders (one per entry) and ladders; "Deadline" throws barrels to jump |
+| Education | **Zelda** | Key → locked gate → chest: "You got: B.E. Computer Science and Engineering · Chennai Institute of Technology · Expected 2028" |
+| Achievements | **Space Invaders** | An invader above each card; the ship shoots each one to reveal it |
+| Contact | Arcade finale | Stair bricks → star → journey summary (time + badges) → flagpole → fireworks, credits roll, enter-your-initials high scores (this browser only) |
+
+**Extras:** click the character (jump) or a "?" block (bump); campfire save points + **CONTINUE?** on return; Konami code (↑↑↓↓←→←→BA) reveals a footer warp zone; terminal cheats `iddqd` (star power) and `warp <1-6>`; speedrun timer and badges; per-world atmosphere (clouds, sparkles, fireflies, dust, sunset). Builders live in `src/lib/games.ts` (tested in `games.test.ts`), renderers in `src/components/games/`.
 
 **Game layer**
 - **Title screen:** "Press Start" appears once per browser. Start turns sound on; Skip stays silent. It never appears for reduced motion or links to a section.

@@ -16,7 +16,13 @@ export type Sfx =
   | "lock"
   | "jetpack"
   | "flag"
-  | "warp";
+  | "warp"
+  | "talk"
+  | "shoot"
+  | "key"
+  | "chest"
+  | "boss"
+  | "save";
 
 const STORAGE_KEY = "anish.sound";
 const listeners = new Set<(on: boolean) => void>();
@@ -24,7 +30,7 @@ let ctx: AudioContext | null = null;
 let enabled = false;
 const lastPlayed = new Map<Sfx, number>();
 /** Minimum gap between repeats of the same sound (ms) so rapid events don't buzz. */
-const MIN_GAP: Partial<Record<Sfx, number>> = { coin: 60, waka: 110, jump: 140, lock: 70, pipe: 250 };
+const MIN_GAP: Partial<Record<Sfx, number>> = { coin: 60, waka: 110, jump: 140, lock: 70, pipe: 250, talk: 90, shoot: 120 };
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -169,6 +175,31 @@ export function play(name: Sfx) {
       return sequence(
         [784, 659, 523, 392, 523, 659, 784, 1047].map((f, i) => ({ f, d: i === 7 ? 0.35 : 0.07, v: 0.05 })),
         0.01,
+      );
+    case "talk":
+      return sequence(
+        [660, 880, 740].map((f) => ({ f, d: 0.035, v: 0.035, type: "square" as OscillatorType })),
+        0.015,
+      );
+    case "shoot":
+      return sequence([{ f: 1400, to: 300, d: 0.12, type: "sawtooth", v: 0.03 }]);
+    case "key":
+      return sequence(
+        [988, 1175, 1568].map((f) => ({ f, d: 0.06, v: 0.05 })),
+        0.01,
+      );
+    case "chest":
+      return sequence(
+        [392, 440, 494, 523, 587, 659, 698, 784].map((f, i) => ({ f, d: i === 7 ? 0.4 : 0.06, v: 0.05, type: "triangle" as OscillatorType })),
+        0.01,
+      );
+    case "boss":
+      noise(0.25, 0.07, 300);
+      return sequence([{ f: 220, to: 55, d: 0.5, v: 0.06 }]);
+    case "save":
+      return sequence(
+        [523, 659, 784].map((f) => ({ f, d: 0.09, v: 0.04, type: "triangle" as OscillatorType })),
+        0.02,
       );
     case "start":
       return sequence(

@@ -97,6 +97,8 @@ export interface CompiledRoute {
   endsInPipe: boolean;
   /** Block bumps and item grabs, in beat order. */
   events: RouteEvent[];
+  /** Character drawn at half size on this track. */
+  mini: boolean;
 }
 
 const pipeCenter = (p: PipeSpec): number => p.x + p.w / 2;
@@ -208,6 +210,7 @@ export function compileRoute(layout: TrackLayout): CompiledRoute {
     if (s.step.kind === "jump" && s.step.bump) events.push({ beat: b0 + weights[i] * 0.5, kind: "block", id: s.step.bump });
     if (s.step.kind === "jump" && s.step.stomp) events.push({ beat: b0 + weights[i] * 0.97, kind: "stomp", id: s.step.stomp });
     if (s.step.kind === "idle" && s.step.event) events.push({ beat: b0 + weights[i] * 0.4, kind: "block", id: s.step.event });
+    if (s.step.kind === "jump" && s.step.over) events.push({ beat: b0 + weights[i] * 0.5, kind: "block", id: s.step.over });
     if (s.step.kind === "grab") events.push({ beat: b0 + weights[i] * 0.4, kind: "item", id: s.step.item });
     return seg;
   });
@@ -228,6 +231,7 @@ export function compileRoute(layout: TrackLayout): CompiledRoute {
     startsInPipe: first?.kind === "emerge",
     endsInPipe: last?.kind === "enter",
     events,
+    mini: Boolean(layout.mini),
   };
 }
 
@@ -389,7 +393,8 @@ export function stateAtBeat(route: CompiledRoute, beat: number): CharacterState 
   if (idx < 0) idx = segments.length - 1;
   const seg = segments[idx];
   const t = clamp01((b - seg.b0) / (seg.b1 - seg.b0 || 1));
-  return { ...segmentState(seg, t), arrived };
+  const st = segmentState(seg, t);
+  return { ...st, arrived, ...(route.mini ? { scale: 0.5 } : {}) };
 }
 
 /**

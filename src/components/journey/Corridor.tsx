@@ -19,7 +19,7 @@ interface BlockMeta {
 /** Extra items at a fraction of the corridor width (enemies, power-ups). */
 export interface CorridorExtra {
   at: number;
-  kind: "bug" | "power";
+  kind: "bug" | "power" | "boss";
   block?: BlockMeta;
 }
 
@@ -65,7 +65,7 @@ export function Corridor({
   theme: CorridorTheme;
   /** CSS selector (within the corridor's parent) for elements to stop above. */
   stopSelector?: string;
-  stopKind?: "block" | "node" | "pellet";
+  stopKind?: "block" | "node" | "pellet" | "npc";
   extras?: CorridorExtra[];
   /** Pac-Man dots along the path. */
   dots?: boolean;
@@ -96,7 +96,7 @@ export function Corridor({
         width,
       );
       const stops: CorridorStop[] = xs.map((x, i) =>
-        (stopKind === "block" || stopKind === "pellet") && blocks[i]
+        (stopKind === "block" || stopKind === "pellet" || stopKind === "npc") && blocks[i]
           ? { x, kind: stopKind, block: blocks[i] }
           : { x, kind: "node" },
       );
@@ -184,20 +184,8 @@ function Decor({ theme, layout, sign, banner }: { theme: CorridorTheme; layout: 
             <rect key={i} x={i * 8 + 2} y={2} width={2} height={2} className={i % 2 ? styles.bulbA : styles.bulbB} />
           ))}
           <text x={W / 2} y={11} textAnchor="middle" className={styles.marquee}>
-            PLAYER SELECT
+            PLAYER SELECT · TALK TO THE VILLAGERS
           </text>
-          {/* A wandering ghost — turns blue once a power pellet is eaten */}
-          <g className={styles.ghostWrap}>
-            <g className={styles.ghost} transform={`translate(${W * 0.62} ${g - 12})`}>
-              <rect x={1} y={0} width={6} height={1} />
-              <rect x={0} y={1} width={8} height={6} />
-              <rect x={0} y={7} width={2} height={1} />
-              <rect x={3} y={7} width={2} height={1} />
-              <rect x={6} y={7} width={2} height={1} />
-              <rect x={1} y={2} width={2} height={2} className={styles.ghostEye} />
-              <rect x={5} y={2} width={2} height={2} className={styles.ghostEye} />
-            </g>
-          </g>
         </g>
       );
     case "dungeon":

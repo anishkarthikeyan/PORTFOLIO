@@ -3,7 +3,7 @@ import type { AchievementKind } from "@/data/types";
 import { visible } from "@/lib/content";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ReplaceMe, SampleNotice, StatusBadge } from "@/components/ui/Status";
-import { Corridor } from "@/components/journey/Corridor";
+import { InvadersTrack } from "@/components/games/InvadersTrack";
 import styles from "./sections.module.css";
 
 const ORDER: AchievementKind[] = ["Hackathon", "Competition", "Award", "Certification", "Publication", "Open Source", "Talk"];
@@ -28,17 +28,7 @@ export function Achievements() {
           )}
         </SectionHeader>
 
-        <Corridor
-          id="trophy-room"
-          world={5}
-          label="Trophy room"
-          theme="trophy"
-          extras={[{ at: 0.06, kind: "power", block: { id: "starpower", power: "star", label: "STAR POWER" } }]}
-          stopSelector="[data-unlock-id^='tr-']"
-          blocks={groups
-            .flatMap((g) => g.items)
-            .map((a, k) => ({ id: `tr-${k}`, unlock: `tr-${k}`, label: a.title }))}
-        />
+        <InvadersTrack id="invaders" labels={groups.flatMap((g) => g.items).map((a) => a.title)} />
         <ul className={styles.cards3}>
           {groups.flatMap((g) => g.items).map((a, k) => (
               <li key={a.title} data-anchor data-unlock-id={`tr-${k}`} className={`${styles.pedestal} panel ${a.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>

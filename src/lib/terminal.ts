@@ -5,6 +5,7 @@
 import { codingProfiles, dsaTopics, education, experience, links, profile, skillCategories } from "@/data/portfolio";
 import type { Track } from "@/data/types";
 import { configuredLinks, getProjects, isConfigured, PHASE_LABEL, TRACK_SHORT, visible } from "./content";
+import { WORLD_NAV } from "@/data/worldNav";
 
 export type TerminalLine =
   | { kind: "text"; text: string; tone?: "muted" | "accent" | "error" | "sample" }
@@ -16,6 +17,8 @@ export interface CommandResult {
   clear?: boolean;
   /** Navigate to this href after printing (dialog closes). */
   navigate?: string;
+  /** Secret game cheat to apply (decorative). */
+  cheat?: "star";
 }
 
 export const COMMANDS: { name: string; description: string }[] = [
@@ -182,6 +185,16 @@ export function runCommand(raw: string): CommandResult {
     case "clear":
     case "cls":
       return { lines: [], clear: true };
+
+    // --- Secret cheats (not listed in help) ---
+    case "iddqd":
+      return { lines: [text("★ Cheat activated: star power for 20 seconds.", "accent")], cheat: "star" };
+    case "warp": {
+      const n = Number(arg);
+      const w = WORLD_NAV.find((x) => x.world === n);
+      if (!w) return { lines: [text(`Warp zone: choose a world 1–${WORLD_NAV.length}.`, "error")] };
+      return { lines: [text(`Warping to World ${w.world} · ${w.title}…`, "accent")], navigate: w.href };
+    }
 
     case "sudo":
       return { lines: [text("Nice try. This is a portfolio, not a shell.", "muted")] };

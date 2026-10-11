@@ -75,7 +75,11 @@ export function ProjectFilter({
                       { at: 0.12, kind: "power", block: { id: "coffee", power: "coffee", label: "COFFEE BOOST" } },
                       { at: 0.5, kind: "bug" },
                     ]
-                  : [{ at: 0.5, kind: "bug" }]
+                  : [
+                      // Mini-boss sits between the two AI/ML cards; a small bug guards the start.
+                      { at: 0.08, kind: "bug" },
+                      { at: 0.5, kind: "boss", block: { id: "final-bug", label: "FINAL BUG" } },
+                    ]
               }
               blocks={group.map((i) => ({
                 id: `hl-${i.key}`,

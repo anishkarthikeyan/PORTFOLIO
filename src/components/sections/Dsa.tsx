@@ -2,7 +2,7 @@ import { codingProfiles, dsaTopics, problemExamples } from "@/data/portfolio";
 import { visible } from "@/lib/content";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ReplaceMe, SampleNotice, StatusBadge, ValueOr } from "@/components/ui/Status";
-import { Corridor } from "@/components/journey/Corridor";
+import { MazeTrack } from "@/components/games/MazeTrack";
 import styles from "./sections.module.css";
 
 /** Muted tetromino colors for the topic tiles (Tetris-style drop-in). */
@@ -77,6 +77,7 @@ export function Dsa() {
         {topics.length > 0 && (
           <div className={styles.subBlock}>
             <h3 className={styles.h3}>Topic map</h3>
+            <MazeTrack id="pac-maze" />
             <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
               Each topic links to evidence once added — practiced problems, write-ups, or contest submissions.
             </p>
@@ -103,14 +104,7 @@ export function Dsa() {
         {problems.length > 0 && (
           <div className={styles.subBlock}>
             <h3 className={styles.h3}>Representative problems</h3>
-            <Corridor
-              id="dungeon"
-              world={4}
-              label="Dungeon"
-              theme="dungeon"
-              stopSelector="[data-unlock-id^='pz-']"
-              blocks={problems.map((p, k) => ({ id: `pz-${k}`, unlock: `pz-${k}`, label: `Puzzle: ${p.pattern}` }))}
-            />
+
             <ul className={styles.cards3}>
               {problems.map((p, k) => (
                 <li key={p.title} data-anchor data-unlock-id={`pz-${k}`} className={`${styles.puzzle} panel ${p.status === "sample" ? "panel-sample" : ""} ${styles.cardPad}`}>

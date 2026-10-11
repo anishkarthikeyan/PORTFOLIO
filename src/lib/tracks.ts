@@ -5,15 +5,15 @@
  *   corridor  – horizontal strip: islands, character select, dungeon,
  *               castle battlements, trophy room, overworld map
  *   tree      – climbs down the skill tree trunk, in and out of knot holes
- *   elevator  – rides down the experience mine shaft, floor by floor
  *   conveyor  – rides a belt through the system-design machine room
+ *   (game worlds — maze, lab, girders, dungeon, invaders — live in games.ts)
  *   finale    – stair bricks → star → flagpole slide → portal
  *
  * All coordinates are art pixels; the character is 16 × 24, blocks 8 × 8.
  * Geometry is validated in tracks.test.ts.
  */
 import type { BlockSpec, PipeSpec, PlatformSpec, RouteStep, TrackLayout } from "@/data/worlds";
-import { compileRoute, flyPoint, type CompiledRoute } from "./journey";
+import { compileRoute, type CompiledRoute } from "./journey";
 
 export const BLOCK = 8;
 
@@ -32,7 +32,7 @@ export interface CorridorStop {
    * bug: enemy to stomp · pellet: Pac-Man power pellet walked through ·
    * node: map stop · pedestal: raised spot where the character waves.
    */
-  kind: "block" | "node" | "pedestal" | "bug" | "power" | "pellet";
+  kind: "block" | "node" | "pedestal" | "bug" | "power" | "pellet" | "boss" | "npc";
   block?: BlockInput;
 }
 
@@ -59,7 +59,7 @@ export function corridorHeight(withBlocks: boolean): number {
 export function buildCorridor(opts: CorridorOptions): TrackLayout | null {
   const W = snap(opts.width);
   if (W < 100) return null;
-  const hasBlocks = opts.stops.some((s) => s.kind === "block");
+  const hasBlocks = opts.stops.some((s) => s.kind === "block" || s.kind === "power" || s.kind === "boss");
   const H = corridorHeight(hasBlocks);
   const g = H - 4;
   const gaps = (opts.gaps ?? []).filter(([a, b]) => a > 30 && b < W - 30).sort((a, b) => a[0] - b[0]);
@@ -162,6 +162,21 @@ export function buildCorridor(opts: CorridorOptions): TrackLayout | null {
       blocks.push({ kind: "bug", points: 200, ...s.block, id, x: s.x - BLOCK / 2, y: g - 7 });
       route.push({ kind: "jump", to: [s.x, g - 7], apex: 8, stomp: id }, { kind: "jump", to: [to, g], apex: 7 });
       x = to;
+    } else if (s.kind === "boss") {
+      // Mini-boss: three stomps, bouncing back between them.
+      const id = s.block?.id ?? `${pid}-boss`;
+      travel(s.x - 26);
+      for (let hit = 1; hit <= 3; hit++) {
+        blocks.push({ kind: "boss", points: hit === 3 ? 1000 : 100, id: `${id}-${hit}`, x: s.x - BLOCK / 2, y: g - 12 });
+        route.push({ kind: "jump", to: [s.x, g - 12], apex: 8, stomp: `${id}-${hit}` });
+        route.push({ kind: "jump", to: [hit === 3 ? s.x + 26 : s.x - 22, g], apex: 8 });
+      }
+      x = s.x + 26;
+    } else if (s.kind === "npc" && s.block) {
+      // Walk up to the villager and talk (RPG text box).
+      travel(s.x - 16);
+      blocks.push({ kind: "npc", points: 50, ...s.block, x: s.x - BLOCK / 2, y: g - 12 });
+      route.push({ kind: "idle", weight: 1.3, event: s.block.id });
     } else if (s.kind === "pellet" && s.block) {
       // Power pellet at body height: collected by walking through it.
       travel(s.x - 10);
@@ -318,49 +333,6 @@ export function buildTree(opts: TreeOptions): TrackLayout | null {
 }
 
 /* ------------------------------------------------------------------------- */
-/*  Elevator                                                                 */
-/* ------------------------------------------------------------------------- */
-
-/** Rides a cab down the experience shaft, pausing at each entry's floor. */
-export function buildElevator(opts: { width: number; height: number; floors: number[] }): TrackLayout | null {
-  const W = snap(opts.width);
-  const H = snap(opts.height);
-  if (W < 22 || H < 90) return null;
-  const cx = W / 2;
-  const top = 30;
-  const floors: number[] = [];
-  for (const f of [...opts.floors].sort((a, b) => a - b)) {
-    const y = Math.max(top + 30, f);
-    if (y > H - 40) continue;
-    if (floors.length && y - floors[floors.length - 1] < 34) continue;
-    floors.push(y);
-  }
-  if (!floors.length) floors.push(Math.min(H - 40, top + 40));
-  const bottom = H - 4;
-
-  const route: RouteStep[] = [
-    { kind: "emerge", from: "hatch" },
-    { kind: "jump", to: [cx, floors[0]], apex: 3 },
-    { kind: "idle", weight: 0.8 },
-  ];
-  floors.slice(1).forEach((f) => route.push({ kind: "ride", to: [cx, f] }, { kind: "idle", pose: "wave", weight: 0.9 }));
-  route.push({ kind: "ride", to: [cx, bottom] }, { kind: "enter", into: "pit" });
-
-  return {
-    width: W,
-    height: H,
-    platforms: [],
-    holes: {
-      hatch: { x: cx - 9, y: top, w: 18 },
-      pit: { x: cx - 9, y: bottom, w: 18 },
-    },
-    route,
-    revealAfter: 2,
-    props: [],
-  };
-}
-
-/* ------------------------------------------------------------------------- */
 /*  Conveyor                                                                 */
 /* ------------------------------------------------------------------------- */
 
@@ -392,54 +364,6 @@ export function buildConveyor(opts: { width: number }): TrackLayout | null {
     ],
     revealAfter: 1,
     props: [],
-  };
-}
-
-/* ------------------------------------------------------------------------- */
-/*  Jetpack (machine room)                                                   */
-/* ------------------------------------------------------------------------- */
-
-export const JETPACK_H = 56;
-
-/** Bump a "?" for the jetpack, fly through the machine room collecting coins. */
-export function buildJetpack(opts: { width: number; id?: string }): TrackLayout | null {
-  const W = snap(opts.width);
-  if (W < 180) return null;
-  const pid = opts.id ?? "jet";
-  const g = JETPACK_H - 4;
-  const exitPipe = { x: 2, y: g - PIPE_H, w: PIPE_W };
-  const entryPipe = { x: W - PIPE_W - 2, y: g - PIPE_H, w: PIPE_W };
-  const fly = { kind: "fly" as const, to: [W - 62, g] as [number, number], lift: 12, wave: 5, waves: 2 };
-  const from: [number, number] = [64, g];
-  const coins: BlockSpec[] = [];
-  for (let x = from[0] + 14, i = 0; x < fly.to[0] - 10; x += 14, i++) {
-    const t = (x - from[0]) / (fly.to[0] - from[0]);
-    const [, feet] = flyPoint(from, fly.to, fly, t);
-    coins.push({ id: `${pid}-coin-${i}`, kind: "coin", points: 10, x: x - 4, y: feet - 16 });
-  }
-  return {
-    width: W,
-    height: JETPACK_H,
-    platforms: [{ x: 0, y: g, w: W, kind: "metal" }],
-    exitPipe,
-    entryPipe,
-    route: [
-      { kind: "emerge" },
-      { kind: "jump", to: [30, g], apex: 4 },
-      { kind: "walk", to: 36 },
-      { kind: "jump", to: [56, g], apex: 9, bump: `${pid}-power` },
-      { kind: "walk", to: 64 },
-      fly,
-      { kind: "walk", to: entryPipe.x - 12 },
-      { kind: "jump", to: [entryPipe.x + PIPE_W / 2, entryPipe.y], apex: 6 },
-      { kind: "enter" },
-    ],
-    revealAfter: 1,
-    props: [],
-    blocks: [
-      { id: `${pid}-power`, kind: "power", power: "jetpack", points: 500, x: 42, y: g - 24 - 9 - BLOCK, label: "JETPACK" },
-      ...coins,
-    ],
   };
 }
 

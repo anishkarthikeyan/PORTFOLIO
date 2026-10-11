@@ -59,6 +59,13 @@ describe("terminal commands", () => {
     expect(runCommand("   ").lines).toEqual([]);
   });
 
+  it("has secret cheats that never run anything real", () => {
+    expect(runCommand("iddqd").cheat).toBe("star");
+    expect(runCommand("warp 4").navigate).toBe("/#skills");
+    expect(runCommand("warp 99").navigate).toBeUndefined();
+    expect(text(runCommand("help"))).not.toContain("iddqd");
+  });
+
   it("tab-completes commands and slugs", () => {
     expect(complete("pro")).toBe("projects");
     expect(complete("open project-a")).toBe("open project-atlas");

@@ -12,6 +12,17 @@ import styles from "./Journey.module.css";
  * On wide screens the JourneyController adds a ledge "lane" in the right
  * margin so the character descends alongside the content.
  */
+export type Atmosphere = "clouds" | "sparkle" | "fireflies" | "dust" | "sunset";
+
+/** Default atmosphere per world (decorative particles, CSS only). */
+const ATMOSPHERE: Record<string, Atmosphere | undefined> = {
+  projects: "clouds",
+  profile: "sparkle",
+  skills: "fireflies",
+  archive: "dust",
+  contact: "sunset",
+};
+
 export function WorldZone({ world, lane = false, children }: { world: string; lane?: boolean; children: React.ReactNode }) {
   const band = getBand(world);
   if (!band) return <>{children}</>;
@@ -28,6 +39,13 @@ export function WorldZone({ world, lane = false, children }: { world: string; la
           <FarLayer band={band} layout={band.wide} />
         </div>
         <div className={styles.ground} />
+        {ATMOSPHERE[world] && (
+          <div className={styles.atmo} data-atmo={ATMOSPHERE[world]}>
+            {Array.from({ length: 14 }, (_, i) => (
+              <span key={i} style={{ "--i": i, top: `${(i * 37) % 90}%` } as React.CSSProperties} />
+            ))}
+          </div>
+        )}
       </div>
       <WorldBand id={band.id} />
       {children}
