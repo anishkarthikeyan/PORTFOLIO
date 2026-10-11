@@ -1613,3 +1613,64 @@
     padding-top: var(--s-3);
   }
 }
+
+/* ---------- Pixel swirl clouds + twinkle stars ---------- */
+.cloud {
+  position: absolute;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  animation: cloudDrift var(--dur, 50s) linear infinite alternate;
+  animation-play-state: paused;
+}
+@keyframes cloudDrift {
+  from {
+    transform: translateX(-40px);
+  }
+  to {
+    transform: translateX(40px);
+  }
+}
+.twinkle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #d8e2ee;
+  box-shadow:
+    0 -3px 0 rgba(216, 226, 238, 0.7),
+    0 3px 0 rgba(216, 226, 238, 0.7),
+    -3px 0 0 rgba(216, 226, 238, 0.7),
+    3px 0 0 rgba(216, 226, 238, 0.7);
+  opacity: 0.5;
+  animation: twinkleStar 2.4s steps(3) infinite;
+  animation-delay: calc(var(--i) * -0.37s);
+  animation-play-state: paused;
+}
+@keyframes twinkleStar {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+}
+:global([data-inview="true"]) > .backdrop .cloud,
+:global([data-inview="true"]) > .backdrop .twinkle {
+  animation-play-state: running;
+}
+@media (max-width: 639px) {
+  .cloud {
+    /* Smaller on phones so they stay atmospheric */
+    scale: 0.55;
+    transform-origin: left top;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cloud,
+  .twinkle {
+    animation: none;
+  }
+}
