@@ -13,10 +13,14 @@ import styles from "./Journey.module.css";
 const SHEET = buildHeroSheet();
 /** The character follows a target line this far down the viewport. */
 const TARGET = 0.55;
-/** Span windows: start this far (× viewport height) above the track… */
-const PRE = 0.7;
-/** …and end this far below it, so each route gets plenty of scroll (and moves slowly). */
-const POST = 0.25;
+/**
+ * Span windows set each world's pace: its route plays over the whole time the
+ * track is on screen. It starts when the track top is this far (× viewport
+ * height) below the target line, i.e. just entering at the bottom (0.55 + 0.45 = 1)…
+ */
+const PRE = 0.45;
+/** …and ends when the track bottom is this far above it, i.e. still at 20% from the top. */
+const POST = 0.35;
 /** Warp animation timings (ms). */
 const SINK_MS = 260;
 const RISE_MS = 320;
