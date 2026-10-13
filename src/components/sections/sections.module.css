@@ -969,9 +969,11 @@
   background: radial-gradient(ellipse at 50% 70%, rgba(132, 155, 184, 0.18), transparent 70%), #0b0e12;
   border: 2px solid #2c3542;
 }
-.portrait svg {
-  width: 120px;
-  height: auto;
+.portrait img {
+  display: block;
+  width: 140px;
+  height: 140px;
+  image-rendering: pixelated;
 }
 .typeBadge {
   display: inline-flex;

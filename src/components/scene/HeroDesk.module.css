@@ -1,7 +1,7 @@
 .frame {
   position: relative;
-  width: 100%;
-  max-width: 640px;
+  /* As wide as the column allows, but never taller than the screen. */
+  width: min(100%, calc(100svh - var(--header-h) - 96px));
   margin-inline: auto;
   aspect-ratio: 1;
 }
@@ -10,9 +10,13 @@
   width: 100%;
   height: auto;
   image-rendering: pixelated;
-  /* Soften the picture's edges into the page background. */
-  -webkit-mask-image: radial-gradient(ellipse 72% 72% at 50% 52%, #000 62%, transparent 100%);
-  mask-image: radial-gradient(ellipse 72% 72% at 50% 52%, #000 62%, transparent 100%);
+  /* Fade only a thin border so the picture melts into the page; the desk objects stay fully visible. */
+  --fade: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent),
+    linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent);
+  -webkit-mask-image: var(--fade);
+  -webkit-mask-composite: source-in;
+  mask-image: var(--fade);
+  mask-composite: intersect;
 }
 
 /* Clickable objects: invisible until hovered or focused. */

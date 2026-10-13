@@ -30,6 +30,8 @@
 
 .intro {
   grid-area: intro;
+  /* The pixel name sizes itself to this column (see .name). */
+  container-type: inline-size;
   align-self: end;
   display: grid;
   gap: var(--s-4);
@@ -51,7 +53,8 @@
 /* Pixel logo type: ANISH in white, KARTHIKEYAN in gold, with a stepped shadow. */
 .name {
   font-family: var(--font-pixel);
-  font-size: var(--fs-hero);
+  /* "KARTHIKEYAN" is ~8.1em wide in the pixel font: cap it to the column width. */
+  font-size: min(var(--fs-hero), 12cqi);
   font-weight: 400;
   line-height: 1.05;
   letter-spacing: 0.02em;
@@ -160,6 +163,8 @@
   grid-area: scene;
   overflow: hidden;
   align-self: center;
+  /* Use the empty space up to the right edge of the window. */
+  margin-right: calc((min(100vw, var(--container)) - 100vw) / 2 - var(--gutter));
 }
 
 .legend {

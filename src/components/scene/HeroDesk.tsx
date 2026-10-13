@@ -23,7 +23,7 @@ export function HeroDesk() {
         alt="Pixel-art Anish at a desk with headphones, coding on a laptop, with a plant, a mug and a phone"
         priority
         placeholder="blur"
-        sizes="(max-width: 900px) 90vw, 640px"
+        sizes="(max-width: 860px) 100vw, 900px"
         className={styles.img}
       />
       {DESK_HOTSPOTS.map((h) => {
