@@ -37,7 +37,7 @@ export function BandTrack({ id }: { id: string }) {
         layout,
         scale: width / layout.width,
         section: next instanceof HTMLElement && next.tagName === "SECTION" ? next : null,
-        pre: 0.45,
+        pre: 0.7,
         onBeat,
       });
     };

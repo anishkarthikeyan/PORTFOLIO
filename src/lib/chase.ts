@@ -6,21 +6,22 @@
  * *chases* it at game speed:
  *
  *   - slow scrolling → the character keeps up exactly;
- *   - normal scrolling → it trails by at most ~1 second, sprinting to catch up;
+ *   - normal scrolling → it trails by ~1–2 seconds, walking (sprinting only
+ *     when far behind);
  *   - big jumps (flick, nav click, several worlds) → it warps through a pipe.
  *
  * Nothing here touches the DOM or time sources, so it is fully testable.
  */
 
 export const CHASE = {
-  /** Natural game speed (beats per second). */
-  baseSpeed: 1.7,
+  /** Natural game speed (beats per second). Kept calm so moves read clearly. */
+  baseSpeed: 1.1,
   /** Fastest catch-up (a visible sprint) before warping instead. */
-  maxSpeed: 8,
-  /** Catch-up time constant (s): with baseSpeed, typical gaps close in ≈1–2s. */
-  maxLag: 0.9,
+  maxSpeed: 4.5,
+  /** Catch-up time constant (s): with baseSpeed, typical gaps close in ≈1.5–3s. */
+  maxLag: 1.5,
   /** Above this speed the character visibly sprints (run frames). */
-  sprintAt: 4.5,
+  sprintAt: 3.2,
   /** Gaps larger than this (beats) warp through a pipe… */
   warpGap: 18,
   /** …as does skipping this many tracks at once (nav clicks, flicks). */

@@ -54,8 +54,9 @@ describe("journey map", () => {
 
 describe("chase", () => {
   it("keeps up exactly with slow scrolling", () => {
-    const r = chaseStep(map, 2, 2.03, 1 / 60);
-    expect("beat" in r && r.beat).toBeCloseTo(2.03);
+    // One frame of slow scrolling (≈1 beat/s) is matched in that same frame.
+    const r = chaseStep(map, 2, 2.015, 1 / 60);
+    expect("beat" in r && r.beat).toBeCloseTo(2.015);
   });
 
   it("moves at game speed, never instantly, for a normal scroll", () => {
@@ -64,11 +65,11 @@ describe("chase", () => {
     if ("beat" in r) expect(r.beat - 1).toBeLessThan(0.2);
   });
 
-  it("catches up within one to two seconds, sprinting when far behind", () => {
+  it("catches up within about three seconds, sprinting only when far behind", () => {
     for (const gap of [3, 6, 10]) {
-      const r = run(1, 1 + gap, 3);
+      const r = run(1, 1 + gap, 4);
       expect(r.warped, `gap ${gap}`).toBe(false);
-      expect(r.frames / 60, `gap ${gap}`).toBeLessThan(2.2);
+      expect(r.frames / 60, `gap ${gap}`).toBeLessThan(3.2);
     }
     const r = chaseStep(map, 1, 11, 1 / 60);
     expect("speed" in r && r.speed).toBeGreaterThan(CHASE.sprintAt);

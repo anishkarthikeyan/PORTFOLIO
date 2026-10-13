@@ -14,9 +14,9 @@ const SHEET = buildHeroSheet();
 /** The character follows a target line this far down the viewport. */
 const TARGET = 0.55;
 /** Span windows: start this far (× viewport height) above the track… */
-const PRE = 0.45;
-/** …and end this far below it, so each route gets plenty of scroll. */
-const POST = 0.1;
+const PRE = 0.7;
+/** …and end this far below it, so each route gets plenty of scroll (and moves slowly). */
+const POST = 0.25;
 /** Warp animation timings (ms). */
 const SINK_MS = 260;
 const RISE_MS = 320;
