@@ -1,11 +1,9 @@
-import { DeskScene, DESK_HOTSPOTS } from "@/components/scene/DeskScene";
+import { DESK_HOTSPOTS, HeroDesk } from "@/components/scene/HeroDesk";
 import { TerminalButton } from "@/components/terminal/TerminalButton";
 import { DevPlaceholder } from "@/components/ui/Status";
 import { education, links, profile } from "@/data/portfolio";
 import { isConfigured } from "@/lib/content";
 import styles from "./Hero.module.css";
-
-const COMPACT_OBJECTS = new Set(["laptop", "mug", "plant", "phone"]);
 
 export function Hero() {
   const edu = education[0];
@@ -75,17 +73,12 @@ export function Hero() {
           </p>
         </div>
         <div className={styles.sceneWrap}>
-          <div className={styles.sceneWide}>
-            <DeskScene variant="wide" />
-          </div>
-          <div className={styles.sceneCompact}>
-            <DeskScene variant="compact" />
-          </div>
+          <HeroDesk />
           <div className={styles.legend}>
             <p className={styles.legendTitle}>Interactive desk</p>
             <ul>
               {DESK_HOTSPOTS.map((h) => (
-                <li key={h.id} data-compact={COMPACT_OBJECTS.has(h.id)}>
+                <li key={h.id}>
                   <a href={h.href}>
                     {h.object} <span aria-hidden="true">→</span>
                     <span className="sr-only">goes to</span> {h.target}

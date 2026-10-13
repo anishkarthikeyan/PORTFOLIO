@@ -1,0 +1,49 @@
+.frame {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+  aspect-ratio: 1;
+}
+.img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  /* Soften the picture's edges into the page background. */
+  -webkit-mask-image: radial-gradient(ellipse 72% 72% at 50% 52%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 72% 72% at 50% 52%, #000 62%, transparent 100%);
+}
+
+/* Clickable objects: invisible until hovered or focused. */
+.hot {
+  position: absolute;
+  border: 2px solid transparent;
+  outline: none;
+}
+.hot:hover,
+.hot:focus-visible {
+  border-color: #f2d27a;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+}
+.tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  white-space: nowrap;
+  background: #101419;
+  border: 1px solid #f2d27a;
+  color: #f2d27a;
+  font-family: var(--font-pixel);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0;
+  pointer-events: none;
+}
+.hot:hover .tip,
+.hot:focus-visible .tip {
+  opacity: 1;
+}

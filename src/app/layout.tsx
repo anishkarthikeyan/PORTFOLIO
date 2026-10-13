@@ -23,16 +23,16 @@ const silkscreen = Silkscreen({
 
 export const metadata: Metadata = {
   ...(site.url ? { metadataBase: new URL(site.url) } : {}),
-  title: { default: site.title, template: "%s · ANISH.EXE" },
+  title: { default: site.title, template: "%s · Anish Karthikeyan" },
   description: site.description,
-  applicationName: "ANISH.EXE",
+  applicationName: "Anish Karthikeyan",
   authors: [{ name: "Anish Karthikeyan" }],
   keywords: ["Anish Karthikeyan", "software engineer", "backend", "applied AI", "machine learning", "portfolio"],
   openGraph: {
     type: "website",
     title: site.title,
     description: site.description,
-    siteName: "ANISH.EXE",
+    siteName: "Anish Karthikeyan",
     ...(site.url ? { url: site.url } : {}),
   },
   twitter: { card: "summary_large_image", title: site.title, description: site.description },
@@ -45,8 +45,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrains.variable} ${silkscreen.variable}`}>
-      <body>
+    // Browser extensions (reader mode, theme switchers) add attributes to <html>
+    // and <body> before React loads; ignore those so they don't raise hydration
+    // errors. This only covers these two tags' own attributes, not their children.
+    <html lang="en" className={`${inter.variable} ${jetbrains.variable} ${silkscreen.variable}`} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <a href="#main" className="skip-link">
           Skip to content
         </a>

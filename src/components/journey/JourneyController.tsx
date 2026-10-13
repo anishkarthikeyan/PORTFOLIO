@@ -329,6 +329,9 @@ export function JourneyController() {
       } else if (spec?.kind === "key") {
         hits++;
         play("key");
+      } else if (spec?.kind === "gate") {
+        hits++;
+        play("key");
       } else if (spec?.kind === "door") {
         hits++;
         play("pipe");

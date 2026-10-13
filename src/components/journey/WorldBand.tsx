@@ -1,4 +1,5 @@
 import { getBand, WORLD_BANDS, type BandLayout, type PipeSpec, type WorldBand as Band } from "@/data/worlds";
+import { compileRoute } from "@/lib/journey";
 import { PixelPlatform, PlatformPatterns } from "./PixelPlatform";
 import { WarpPipe } from "./WarpPipe";
 import { WorldProp } from "./WorldProps";
@@ -60,9 +61,46 @@ function pipeBase(layout: BandLayout, pipe: PipeSpec): number {
   return under ? under.y : layout.height;
 }
 
+/**
+ * Something the character rides, drawn around its feet at the origin. The
+ * band moves it (data-mover = route step index) in step with the character.
+ */
+function Vehicle({ kind }: { kind: "cart" | "zip" }) {
+  if (kind === "zip") {
+    // Trolley on the cable, with a handlebar at hand height.
+    return (
+      <g>
+        <rect x={-3} y={-29} width={6} height={3} fill="#5c6f88" />
+        <rect x={-2} y={-30} width={4} height={1} fill="#a7adb8" />
+        <rect x={-1} y={-26} width={2} height={12} fill="#3a4454" />
+        <rect x={-9} y={-14} width={18} height={2} fill="#e8b84f" />
+        <rect x={-9} y={-14} width={2} height={2} fill="#c86b5e" />
+        <rect x={7} y={-14} width={2} height={2} fill="#c86b5e" />
+      </g>
+    );
+  }
+  // Mine cart: the character's legs are hidden inside it while riding.
+  return (
+    <g>
+      <rect x={-11} y={-9} width={22} height={7} fill="#5c6f88" />
+      <rect x={-11} y={-9} width={22} height={1} fill="#a9bdd6" />
+      <rect x={-11} y={-6} width={22} height={1} fill="#3a4454" />
+      <rect x={-11} y={-9} width={1} height={7} fill="#849bb8" />
+      <rect x={10} y={-9} width={1} height={7} fill="#3a4454" />
+      {[-7, 4].map((wx) => (
+        <g key={wx} className={styles.wheel} style={{ transformOrigin: `${wx + 1.5}px -1.5px` }}>
+          <rect x={wx} y={-3} width={3} height={3} fill="#1d232c" />
+          <rect x={wx + 1} y={-3} width={1} height={3} fill="#a7adb8" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
 function Stage({ band, layout, variant }: { band: Band; layout: BandLayout; variant: "wide" | "compact" }) {
   const ns = `wb-${band.id}-${variant}`;
   const floor = layout.height;
+  const route = compileRoute(layout);
   return (
     <svg
       className={`${styles.stage} ${variant === "wide" ? styles.stageWide : styles.stageCompact}`}
@@ -83,6 +121,19 @@ function Stage({ band, layout, variant }: { band: Band; layout: BandLayout; vari
       {layout.platforms.map((p, i) => (
         <PixelPlatform key={i} p={p} floor={floor} ns={ns} />
       ))}
+      {Object.entries(layout.holes ?? {}).map(([name, h]) => (
+        <g key={name}>
+          <rect x={h.x} y={h.y - 1} width={h.w} height={1} fill="#2b1a12" />
+          <rect x={h.x + 1} y={h.y} width={h.w - 2} height={3} fill="#08090b" />
+        </g>
+      ))}
+      {route.segments.map((sg, i) =>
+        sg.step.kind === "ride" && sg.step.vehicle ? (
+          <g key={`v${i}`} data-mover={i} transform={`translate(${sg.from[0]} ${sg.from[1]})`}>
+            <Vehicle kind={sg.step.vehicle} />
+          </g>
+        ) : null,
+      )}
       {layout.exitPipe && <WarpPipe pipe={layout.exitPipe} floor={pipeBase(layout, layout.exitPipe)} role="exit" />}
       {layout.entryPipe && (
         <WarpPipe

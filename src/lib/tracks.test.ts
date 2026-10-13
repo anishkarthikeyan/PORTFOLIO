@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { TrackLayout } from "@/data/worlds";
+import { getBand, type TrackLayout } from "@/data/worlds";
 import { HERO_H, HERO_W } from "@/components/journey/heroSprite";
 import { compileRoute, stateAtBeat, standingBeat } from "./journey";
 import { buildLane } from "./lane";
 import {
   battlementGaps,
   BLOCK,
-  buildConveyor,
   buildCorridor,
   buildFinale,
+  buildTokenGate,
   buildTree,
   vehicleAt,
 } from "./tracks";
@@ -27,7 +27,8 @@ const cases: [string, TrackLayout | null][] = [
   ["corridor: no pipes (static)", buildCorridor({ width: 200, stops: [], exit: false, entry: false })],
   ["tree: both sides", buildTree({ width: 48, height: 600, knots: [40, 150, 260, 380, 500], sides: [1, -1, 1, -1, 1], acorns: ["a", "b", "c", "d", "e"].map(block) })],
   ["tree: compact one side", buildTree({ width: 36, height: 520, knots: [50, 140, 240, 330, 430], sides: [1, 1, 1, 1, 1], acorns: ["a", "b", "c", "d", "e"].map(block) })],
-  ["conveyor", buildConveyor({ width: 260 })],
+  ["token gate: three gates", buildTokenGate({ width: 300 })],
+  ["token gate: narrow", buildTokenGate({ width: 160 })],
   ["finale: narrow", buildFinale({ width: 122 })],
   ["finale: wide", buildFinale({ width: 200 })],
   ["lane", buildLane({ width: 44, height: 700, anchors: [20, 200, 420] })?.layout ?? null],
@@ -137,14 +138,26 @@ describe("specific worlds", () => {
     expect(compileRoute(layout).segments.filter((s) => s.step.kind === "emerge").length).toBe(2);
   });
 
-  it("vehicles park before rides and follow them (conveyor belt)", () => {
-    const layout = buildConveyor({ width: 260 })!;
+  it("vehicles park before rides and follow them (mine cart)", () => {
+    const layout = getBand("archive")!.wide;
     const route = compileRoute(layout);
     const ride = route.segments.find((s) => s.step.kind === "ride")!;
     expect(vehicleAt(route, 0)!.x).toBe(ride.from[0]);
     const mid = (ride.b0 + ride.b1) / 2;
     expect(stateAtBeat(route, mid).x).toBeCloseTo(vehicleAt(route, mid)!.x);
     expect(vehicleAt(route, route.total)!.x).toBe(ride.to[0]);
+  });
+
+  it("token gates: the throttled gate holds the request until a token refills", () => {
+    const layout = buildTokenGate({ width: 300, id: "rl" })!;
+    const route = compileRoute(layout);
+    const waits = route.segments.filter((s) => s.step.kind === "idle");
+    // Free gates: one short pause each. Throttled gate: a long wait, then the open.
+    expect(waits.length).toBe(4);
+    const opens = route.events.filter((e) => e.id.startsWith("rl-gate-")).map((e) => e.id);
+    expect(opens).toEqual(["rl-gate-0", "rl-gate-1", "rl-gate-2"]);
+    const throttled = layout.blocks!.find((b) => b.id === "rl-gate-1")!;
+    expect(throttled.points).toBeGreaterThan(layout.blocks![0].points);
   });
 
   it("finale climbs three bricks upward, grabs the star, slides the pole, ends visible", () => {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { getBand } from "@/data/worlds";
+import { getBand, type TrackLayout } from "@/data/worlds";
+import { compileRoute } from "@/lib/journey";
 import { COMPACT_MAX, registerTrack } from "./registry";
 
 /**
@@ -26,6 +27,7 @@ export function BandTrack({ id }: { id: string }) {
       const width = stage?.getBoundingClientRect().width ?? 0;
       if (!stage || !width) return;
       const next = band.nextElementSibling;
+      const onBeat = beatAnimator(stage, layout);
       unregister = registerTrack({
         id: `band-${id}`,
         world: cfg.world,
@@ -36,6 +38,7 @@ export function BandTrack({ id }: { id: string }) {
         scale: width / layout.width,
         section: next instanceof HTMLElement && next.tagName === "SECTION" ? next : null,
         pre: 0.45,
+        onBeat,
       });
     };
 
@@ -51,4 +54,30 @@ export function BandTrack({ id }: { id: string }) {
   }, [id]);
 
   return <span ref={ref} hidden />;
+}
+
+/**
+ * Moves the band's vehicles with the character and sets data-cue-state
+ * ("before" / "on" / "after") on props whose cue matches the playing step.
+ * Pure function of the beat, so scrolling back replays it exactly.
+ */
+function beatAnimator(stage: Element, layout: TrackLayout) {
+  const { segments } = compileRoute(layout);
+  const movers = segments.flatMap((sg, i) => {
+    const el = stage.querySelector<SVGGElement>(`[data-mover="${i}"]`);
+    return el ? [{ el, sg }] : [];
+  });
+  const cues = segments.flatMap((sg) =>
+    sg.step.cue ? Array.from(stage.querySelectorAll<SVGElement>(`[data-cue="${sg.step.cue}"]`), (el) => ({ el, sg })) : [],
+  );
+  return (beat: number) => {
+    for (const { el, sg } of movers) {
+      const t = Math.min(1, Math.max(0, (beat - sg.b0) / (sg.b1 - sg.b0 || 1)));
+      el.setAttribute("transform", `translate(${sg.from[0] + (sg.to[0] - sg.from[0]) * t} ${sg.from[1] + (sg.to[1] - sg.from[1]) * t})`);
+    }
+    for (const { el, sg } of cues) {
+      const state = beat < sg.b0 ? "before" : beat < sg.b1 ? "on" : "after";
+      if (el.dataset.cueState !== state) el.dataset.cueState = state;
+    }
+  };
 }

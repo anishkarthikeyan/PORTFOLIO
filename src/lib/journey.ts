@@ -106,6 +106,8 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 /** Feet depth at which the sprite is fully inside a pipe. */
 const SUNK = HERO_H + 1;
+/** Art px of the legs hidden inside a mine cart. */
+export const CART_CLIP = 6;
 
 /** Game-speed durations, in beats. */
 function defaultWeight(step: RouteStep, from: Point, to: Point): number {
@@ -131,6 +133,8 @@ function defaultWeight(step: RouteStep, from: Point, to: Point): number {
     case "slide":
       return Math.max(0.5, dy / 48);
     case "ride":
+      if (step.kind === "ride" && step.vehicle === "cart") return Math.max(0.6, dx / 70);
+      if (step.kind === "ride" && step.vehicle === "zip") return Math.max(0.8, Math.hypot(dx, dy) / 55);
       return Math.max(0.6, Math.hypot(dx, dy) / 30);
     case "hide":
       return 0.6;
@@ -363,8 +367,16 @@ function segmentState(seg: Segment, t: number): Omit<CharacterState, "arrived"> 
         step.kind === "slide" ? "climb1" : Math.floor(Math.abs(y - from[1]) / 4) % 2 ? "climb2" : "climb1";
       return { ...base, x: from[0], y, frame };
     }
-    case "ride":
-      return { ...base, x: lerp(from[0], to[0], t), y: lerp(from[1], to[1], t), frame: "idle", riding: true };
+    case "ride": {
+      const x = lerp(from[0], to[0], t);
+      const y = lerp(from[1], to[1], t);
+      // Zipline: hands up on the trolley. Cart: legs hidden by the cart, arms
+      // up for the fast middle of the ride.
+      if (step.vehicle === "zip") return { ...base, moving: true, x, y, frame: "climb2", riding: true };
+      if (step.vehicle === "cart")
+        return { ...base, moving: true, x, y, frame: t > 0.2 && t < 0.85 ? "celebrate" : "idle", riding: true, clip: CART_CLIP };
+      return { ...base, x, y, frame: "idle", riding: true };
+    }
     case "hide":
       return { ...base, visible: false, x: lerp(from[0], to[0], t), y: lerp(from[1], to[1], t), frame: "pipe" };
     case "grab": {
@@ -403,13 +415,15 @@ export function stateAtBeat(route: CompiledRoute, beat: number): CharacterState 
  */
 export function standingBeat(route: CompiledRoute, beat: number): number {
   const b = Math.min(Math.max(beat, 0), route.total);
-  const airborne = (k: string) => ["jump", "fly", "climb", "slide", "hide", "grab", "emerge", "enter"].includes(k);
+  const airborne = (sg: Segment) =>
+    ["jump", "fly", "climb", "slide", "hide", "grab", "emerge", "enter"].includes(sg.step.kind) ||
+    (sg.step.kind === "ride" && sg.step.vehicle === "zip");
   // Mini (maze) moves are always "standing".
   let idx = route.segments.findIndex((s) => b >= s.b0 && b < s.b1);
   if (idx < 0) idx = route.segments.length - 1;
-  if (!airborne(route.segments[idx].step.kind)) return b;
+  if (!airborne(route.segments[idx])) return b;
   // Walk back to the last moment the character stood on something.
-  while (idx > 0 && airborne(route.segments[idx].step.kind) && route.segments[idx].step.kind !== "emerge") idx--;
+  while (idx > 0 && airborne(route.segments[idx]) && route.segments[idx].step.kind !== "emerge") idx--;
   const seg = route.segments[idx];
   return Math.max(0, seg.b1 - 1e-6);
 }

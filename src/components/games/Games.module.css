@@ -105,8 +105,41 @@
     transform: rotate(360deg);
   }
 }
-.arm {
-  animation: crackle 0.9s steps(1) infinite;
+/* Ape: pound, pound, throw. */
+.apePound {
+  animation: apePound 1.6s steps(1) infinite;
+}
+.apeThrow {
+  animation: apeThrow 1.6s steps(1) infinite;
+}
+@keyframes apePound {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  20% {
+    transform: translateY(1px);
+  }
+  40% {
+    transform: none;
+  }
+  60% {
+    transform: translateY(1px);
+  }
+  75%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes apeThrow {
+  0%,
+  74% {
+    opacity: 0;
+  }
+  75%,
+  100% {
+    opacity: 1;
+  }
 }
 
 /* ---------- Dungeon ---------- */
@@ -126,8 +159,80 @@
   .blink,
   .warning,
   .barrel,
-  .arm,
+  .apePound,
   .flame {
+    animation: none;
+  }
+  .apeThrow {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* ---------- Token-bucket gates (rate limiter) ---------- */
+.gateTitle {
+  font-family: var(--font-pixel);
+  font-size: 3.2px;
+  fill: #849bb8;
+  letter-spacing: 0.3px;
+}
+.code429,
+.code200 {
+  font-family: var(--font-pixel);
+  font-size: 4px;
+}
+.code429 {
+  fill: #c86b5e;
+  opacity: 0;
+}
+.code200 {
+  fill: #62b06a;
+  opacity: 0;
+}
+/* Empty bucket on the throttled gate shows 429 until the token refills it. */
+.gate[data-throttled] .code429 {
+  opacity: 1;
+  animation: blink429 0.6s steps(1) infinite;
+}
+.gate[data-throttled] .token {
+  transform: translateY(-14px);
+  opacity: 0;
+}
+@keyframes blink429 {
+  50% {
+    opacity: 0.25;
+  }
+}
+.token {
+  transition:
+    transform 300ms steps(3),
+    opacity 300ms steps(1);
+}
+.barrier {
+  transition: transform 400ms steps(4);
+}
+/* Passed: throttled bucket gets its token (it drips in), others spend theirs. */
+.gate[data-hit] .token {
+  transform: none;
+  opacity: 1;
+}
+.gate:not([data-throttled])[data-hit] .token {
+  transform: translateY(6px);
+  opacity: 0;
+}
+.gate[data-hit] .barrier {
+  transform: rotate(-80deg);
+  transition-delay: 250ms;
+}
+.gate[data-hit] .code429 {
+  opacity: 0;
+  animation: none;
+}
+.gate[data-hit] .code200 {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate .code429 {
     animation: none;
   }
 }

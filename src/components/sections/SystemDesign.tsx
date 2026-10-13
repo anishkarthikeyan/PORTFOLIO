@@ -3,8 +3,8 @@ import { MATURITY_LABEL, visible } from "@/lib/content";
 import { ArchitectureDiagram } from "@/components/diagram/ArchitectureDiagram";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SampleNotice, StatusBadge } from "@/components/ui/Status";
-import { ConveyorTrack } from "@/components/journey/ConveyorTrack";
 import { LabTrack } from "@/components/games/LabTrack";
+import { TokenGateTrack } from "@/components/games/TokenGateTrack";
 import styles from "./sections.module.css";
 
 export function SystemDesign() {
@@ -69,12 +69,8 @@ export function SystemDesign() {
                 </div>
               </div>
 
-              {/* First machine: the jetpack lab. The rest: conveyor rides. */}
-              {di === 0 ? (
-                <LabTrack id={`lab-${d.slug}`} />
-              ) : (
-                <ConveyorTrack id={`conveyor-${d.slug}`} label="Machine room" />
-              )}
+              {/* First machine: the jetpack lab. The rest: token-bucket gates (a request being rate limited). */}
+              {di === 0 ? <LabTrack id={`lab-${d.slug}`} /> : <TokenGateTrack id={`gate-${d.slug}`} />}
               <div className={styles.machine}>
                 <ArchitectureDiagram diagram={d.diagram} />
               </div>

@@ -16,7 +16,7 @@ export function pipeBase(layout: TrackLayout, pipe: PipeSpec): number {
 export function BlockSprite({ b }: { b: BlockSpec }) {
   const { x, y } = b;
   // Actors drawn by their game's own component.
-  if (b.kind === "ghost") return null;
+  if (b.kind === "ghost" || b.kind === "gate") return null;
   if (b.kind === "boss") {
     if (!b.id.endsWith("-1")) return null;
     const base = b.id.slice(0, -2);
@@ -384,7 +384,7 @@ export function BlockToasts({ layout, scale }: { layout: TrackLayout; scale: num
             aria-hidden="true"
           >
             <span className={styles.toastTag}>
-              {b.kind === "chest" ? "You got" : b.kind === "npc" ? "Villager" : b.kind === "invader" ? "Cleared" : "Unlocked"}
+              {b.kind === "chest" ? "You got" : b.kind === "npc" ? "Villager" : b.kind === "invader" ? "Cleared" : b.kind === "gate" ? "Rate limiter" : "Unlocked"}
             </span>
             {b.label}
           </div>

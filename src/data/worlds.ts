@@ -36,7 +36,11 @@ export interface PipeSpec {
   w: number;
 }
 
-export type RouteStep =
+/**
+ * `cue` names a prop that reacts while this step plays (a spring squashes, a
+ * cannon fires…). The band sets data-cue-state="on" / "after" on it.
+ */
+export type RouteStep = (
   | { kind: "emerge"; weight?: number; /** Named hole instead of the exit pipe. */ from?: string }
   | { kind: "walk" | "run"; to: number; weight?: number }
   /**
@@ -57,12 +61,17 @@ export type RouteStep =
   | { kind: "celebrate"; weight?: number }
   /** Vertical movement on a vine/ladder (climb) or pole (slide). */
   | { kind: "climb" | "slide"; toY: number; weight?: number }
-  /** Standing still on a moving platform (elevator, conveyor). */
-  | { kind: "ride"; to: Point; weight?: number }
+  /**
+   * Carried by something (elevator, conveyor). With `vehicle` the band draws
+   * it and moves it with the character: a mine cart (legs hidden inside) or a
+   * zipline trolley (hanging from the cable above the head).
+   */
+  | { kind: "ride"; to: Point; weight?: number; vehicle?: "cart" | "zip" }
   /** Travel hidden inside the world (e.g. through a hollow trunk). */
   | { kind: "hide"; to: Point; weight?: number }
   /** Touch a collectible at the current position (e.g. the star). */
-  | { kind: "grab"; item: string; weight?: number };
+  | { kind: "grab"; item: string; weight?: number }
+) & { cue?: string };
 
 /** A bumpable block or collectible. Hitting it awards points and can unlock an item. */
 export interface BlockSpec {
@@ -91,7 +100,8 @@ export interface BlockSpec {
     | "door"
     | "ghost"
     | "barrel"
-    | "invader";
+    | "invader"
+    | "gate";
   /** Power-up released by a `power` block. */
   power?: "coffee" | "jetpack" | "star";
   points: number;
@@ -117,14 +127,28 @@ export type PropKind =
   | "cabinet"
   | "cap"
   | "portal"
-  | "signpost";
+  | "signpost"
+  | "ladder"
+  | "pole"
+  | "vine"
+  | "spring"
+  | "zipline"
+  | "cannon"
+  | "rails"
+  | "hollowtree";
 
 export interface PropSpec {
   kind: PropKind;
-  /** Base (bottom-left) position. */
+  /** Base (bottom-left) position. Ladders, poles and vines: top-center. */
   x: number;
   y: number;
   label?: string;
+  /** Length downward from y (ladder, pole, vine). */
+  h?: number;
+  /** Far end (zipline cable at feet height, rails). */
+  to?: Point;
+  /** Reacts to the route step with the same cue name. */
+  cue?: string;
 }
 
 export interface BandLayout {
@@ -174,45 +198,20 @@ const CH = 88; // compact band height
 
 const EXIT_W: PipeSpec = { x: 14, y: 36, w: 22 };
 const ENTRY_W: PipeSpec = { x: 322, y: 36, w: 22 };
+/** Compact (phone) entry pipe, standing on the floor at the right. */
+const ENTRY_C: PipeSpec = { x: 134, y: 64, w: 22 };
 
-/** Simplified vertical route for phones: ledge → step → floor → pipe. */
-function compact(opts: {
-  start: "pipe" | "spawn" ;
-  end: "pipe" | "portal";
-  kinds?: [PlatformSpec["kind"], PlatformSpec["kind"], PlatformSpec["kind"]];
-  props?: PropSpec[];
-}): BandLayout {
-  const [k1, k2, k3] = opts.kinds ?? ["ground", "block", "ground"];
-  const route: RouteStep[] = [];
-  if (opts.start === "pipe") route.push({ kind: "emerge" }, { kind: "jump", to: [40, 40], apex: 6 });
-  else route.push({ kind: "idle" });
-  route.push(
-    { kind: "walk", to: 44 },
-    { kind: "jump", to: [80, 58], apex: 6 },
-    { kind: "walk", to: 100 },
-    { kind: "jump", to: [120, 76], apex: 8 },
-  );
-  if (opts.end === "pipe") {
-    route.push({ kind: "jump", to: [139, 62], apex: 10 }, { kind: "enter" });
-  } else {
-    route.push({ kind: "celebrate" });
-  }
-  return {
-    width: C,
-    height: CH,
-    platforms: [
-      { x: 0, y: 40, w: 52, h: 10, kind: k1 },
-      { x: 62, y: 58, w: 44, h: 8, kind: k2 },
-      { x: 100, y: 76, w: 60, kind: k3 },
-    ],
-    exitPipe: opts.start === "pipe" ? { x: 8, y: 28, w: 22 } : undefined,
-    entryPipe: opts.end === "pipe" ? { x: 128, y: 62, w: 22 } : undefined,
-    spawn: opts.start === "spawn" ? [24, 40] : undefined,
-    route,
-    revealAfter: 2,
-    props: opts.props ?? [],
-  };
-}
+/*
+ * Every world travels differently, so the journey never repeats itself:
+ *   1 spawn    – climb a ladder onto the rooftop
+ *   2 projects – climb a tower and ride the zipline across
+ *   3 profile  – springboard onto the stage, wave, slide down the pole
+ *   4 skills   – climb a vine, drop into the hollow tree, pop out by its roots
+ *   5 archive  – hop in a mine cart, get flung out at the buffer stop
+ *   6 contact  – load into a cannon and get fired over the gap
+ * Ladders, poles and vines sit exactly on a platform edge so the character
+ * passes alongside the platform rather than through it.
+ */
 
 /* --------------------------------- worlds -------------------------------- */
 
@@ -228,22 +227,21 @@ export const WORLD_BANDS: WorldBand[] = [
       width: W,
       height: WH,
       platforms: [
-        { x: 0, y: 52, w: 150, kind: "wood" },
-        { x: 170, y: 44, w: 36, h: 8, kind: "block" },
-        { x: 222, y: 36, w: 36, h: 8, kind: "block" },
-        { x: 276, y: 52, w: 84, kind: "ground" },
+        { x: 0, y: 52, w: 170, kind: "wood" },
+        { x: 170, y: 30, w: 70, h: 8, kind: "block" },
+        { x: 270, y: 52, w: 90, kind: "ground" },
       ],
-      entryPipe: { x: 320, y: 36, w: 22 },
+      entryPipe: ENTRY_W,
       spawn: [40, 52],
       route: [
         { kind: "idle", weight: 1.4 },
-        { kind: "walk", to: 120 },
-        { kind: "run", to: 146 },
-        { kind: "jump", to: [186, 44], apex: 10 },
-        { kind: "jump", to: [238, 36], apex: 10 },
-        { kind: "jump", to: [292, 52], apex: 6 },
-        { kind: "walk", to: 300 },
-        { kind: "jump", to: [331, 36], apex: 10 },
+        { kind: "walk", to: 150 },
+        { kind: "walk", to: 170, weight: 0.5 },
+        { kind: "climb", toY: 30 },
+        { kind: "run", to: 236 },
+        { kind: "jump", to: [290, 52], apex: 8 },
+        { kind: "walk", to: 302 },
+        { kind: "jump", to: [333, 36], apex: 10 },
         { kind: "enter" },
       ],
       revealAfter: 1,
@@ -251,14 +249,33 @@ export const WORLD_BANDS: WorldBand[] = [
         { kind: "desk", x: 58, y: 52 },
         { kind: "lamp", x: 112, y: 52 },
         { kind: "flag", x: 14, y: 52, label: "START" },
+        { kind: "ladder", x: 170, y: 30, h: 22 },
       ],
     },
-    compact: compact({
-      start: "spawn",
-      end: "pipe",
-      kinds: ["wood", "block", "ground"],
-      props: [{ kind: "flag", x: 4, y: 40, label: "START" }],
-    }),
+    compact: {
+      width: C,
+      height: CH,
+      platforms: [
+        { x: 0, y: 64, w: 70, kind: "wood" },
+        { x: 70, y: 40, w: 50, h: 6, kind: "block" },
+        { x: 118, y: 76, w: 42, kind: "ground" },
+      ],
+      entryPipe: ENTRY_C,
+      spawn: [26, 64],
+      route: [
+        { kind: "idle", weight: 1.2 },
+        { kind: "walk", to: 70 },
+        { kind: "climb", toY: 40 },
+        { kind: "run", to: 112 },
+        { kind: "jump", to: [145, 64], apex: 8 },
+        { kind: "enter" },
+      ],
+      revealAfter: 1,
+      props: [
+        { kind: "flag", x: 4, y: 64, label: "START" },
+        { kind: "ladder", x: 70, y: 40, h: 24 },
+      ],
+    },
   },
   {
     id: "projects",
@@ -271,10 +288,10 @@ export const WORLD_BANDS: WorldBand[] = [
       width: W,
       height: WH,
       platforms: [
-        { x: 0, y: 52, w: 110, kind: "ground" },
-        { x: 132, y: 40, w: 62, h: 8, kind: "island" },
-        { x: 214, y: 44, w: 62, h: 8, kind: "island" },
-        { x: 296, y: 52, w: 64, kind: "ground" },
+        { x: 0, y: 52, w: 100, kind: "ground" },
+        { x: 100, y: 32, w: 22, h: 6, kind: "metal" },
+        { x: 246, y: 46, w: 54, h: 8, kind: "island" },
+        { x: 300, y: 52, w: 60, kind: "ground" },
       ],
       exitPipe: EXIT_W,
       entryPipe: ENTRY_W,
@@ -282,26 +299,47 @@ export const WORLD_BANDS: WorldBand[] = [
         { kind: "emerge" },
         { kind: "jump", to: [60, 52], apex: 10 },
         { kind: "walk", to: 100 },
-        { kind: "jump", to: [150, 40], apex: 14 },
-        { kind: "walk", to: 180 },
-        { kind: "jump", to: [230, 44], apex: 10 },
-        { kind: "run", to: 262 },
-        { kind: "jump", to: [310, 52], apex: 8 },
+        { kind: "climb", toY: 32 },
+        { kind: "walk", to: 122, weight: 0.5 },
+        { kind: "ride", to: [266, 46], vehicle: "zip" },
+        { kind: "jump", to: [308, 52], apex: 10 },
         { kind: "jump", to: [333, 36], apex: 10 },
         { kind: "enter" },
       ],
       revealAfter: 2,
       props: [
-        { kind: "server", x: 140, y: 40, label: "SDE" },
-        { kind: "nodes", x: 240, y: 44, label: "AI/ML" },
+        { kind: "server", x: 54, y: 52, label: "SDE" },
+        { kind: "ladder", x: 100, y: 32, h: 20 },
+        { kind: "zipline", x: 122, y: 32, to: [266, 46] },
+        { kind: "nodes", x: 276, y: 46, label: "AI/ML" },
       ],
     },
-    compact: compact({
-      start: "pipe",
-      end: "pipe",
-      kinds: ["ground", "island", "ground"],
-      props: [{ kind: "server", x: 66, y: 58, label: "SDE" }],
-    }),
+    compact: {
+      width: C,
+      height: CH,
+      platforms: [
+        { x: 0, y: 58, w: 44, kind: "ground" },
+        { x: 44, y: 30, w: 18, h: 4, kind: "metal" },
+        { x: 96, y: 70, w: 64, kind: "ground" },
+      ],
+      exitPipe: { x: 6, y: 46, w: 22 },
+      entryPipe: { x: 134, y: 58, w: 22 },
+      route: [
+        { kind: "emerge" },
+        { kind: "jump", to: [36, 58], apex: 8 },
+        { kind: "walk", to: 44, weight: 0.4 },
+        { kind: "climb", toY: 30 },
+        { kind: "walk", to: 62, weight: 0.5 },
+        { kind: "ride", to: [112, 70], vehicle: "zip" },
+        { kind: "jump", to: [145, 58], apex: 8 },
+        { kind: "enter" },
+      ],
+      revealAfter: 2,
+      props: [
+        { kind: "ladder", x: 44, y: 30, h: 28 },
+        { kind: "zipline", x: 62, y: 30, to: [112, 70] },
+      ],
+    },
   },
   {
     id: "profile",
@@ -314,37 +352,61 @@ export const WORLD_BANDS: WorldBand[] = [
       width: W,
       height: WH,
       platforms: [
-        { x: 0, y: 52, w: 96, kind: "ground" },
-        { x: 118, y: 42, w: 80, h: 8, kind: "wood" },
-        { x: 218, y: 34, w: 24, h: 8, kind: "block" },
-        { x: 262, y: 52, w: 98, kind: "ground" },
+        { x: 0, y: 52, w: 124, kind: "ground" },
+        { x: 150, y: 36, w: 70, h: 6, kind: "wood" },
+        { x: 210, y: 52, w: 150, kind: "ground" },
       ],
       exitPipe: EXIT_W,
       entryPipe: ENTRY_W,
       route: [
         { kind: "emerge" },
-        { kind: "jump", to: [62, 52], apex: 10 },
-        { kind: "walk", to: 86 },
-        { kind: "jump", to: [134, 42], apex: 10 },
-        { kind: "walk", to: 186 },
-        { kind: "jump", to: [230, 34], apex: 8 },
-        { kind: "jump", to: [290, 52], apex: 6 },
-        { kind: "walk", to: 304 },
+        { kind: "jump", to: [60, 52], apex: 10 },
+        { kind: "walk", to: 104 },
+        { kind: "jump", to: [172, 36], apex: 14, weight: 1.5, cue: "spring" },
+        { kind: "idle", pose: "wave", weight: 0.8 },
+        { kind: "walk", to: 220 },
+        { kind: "slide", toY: 52 },
+        { kind: "walk", to: 302 },
         { kind: "jump", to: [333, 36], apex: 10 },
         { kind: "enter" },
       ],
       revealAfter: 2,
       props: [
-        { kind: "card", x: 150, y: 42, label: "PLAYER 1" },
-        { kind: "plant", x: 74, y: 52 },
+        { kind: "plant", x: 70, y: 52 },
+        { kind: "spring", x: 98, y: 52, cue: "spring" },
+        { kind: "card", x: 186, y: 36, label: "PLAYER 1" },
+        { kind: "pole", x: 220, y: 30, h: 22 },
       ],
     },
-    compact: compact({
-      start: "pipe",
-      end: "pipe",
-      kinds: ["ground", "wood", "ground"],
-      props: [{ kind: "card", x: 64, y: 58, label: "P1" }],
-    }),
+    compact: {
+      width: C,
+      height: CH,
+      platforms: [
+        { x: 0, y: 64, w: 60, kind: "ground" },
+        { x: 70, y: 40, w: 44, h: 5, kind: "wood" },
+        { x: 100, y: 76, w: 60, kind: "ground" },
+      ],
+      exitPipe: { x: 6, y: 52, w: 22 },
+      entryPipe: ENTRY_C,
+      route: [
+        { kind: "emerge" },
+        { kind: "jump", to: [36, 64], apex: 8 },
+        { kind: "walk", to: 44 },
+        { kind: "jump", to: [84, 40], apex: 12, weight: 1.4, cue: "spring" },
+        { kind: "idle", pose: "wave", weight: 0.7 },
+        { kind: "walk", to: 114 },
+        { kind: "slide", toY: 76 },
+        { kind: "walk", to: 118, weight: 0.3 },
+        { kind: "jump", to: [145, 64], apex: 8 },
+        { kind: "enter" },
+      ],
+      revealAfter: 2,
+      props: [
+        { kind: "spring", x: 38, y: 64, cue: "spring" },
+        { kind: "card", x: 96, y: 40, label: "P1" },
+        { kind: "pole", x: 114, y: 34, h: 42 },
+      ],
+    },
   },
   {
     id: "skills",
@@ -357,38 +419,68 @@ export const WORLD_BANDS: WorldBand[] = [
       width: W,
       height: WH,
       platforms: [
-        { x: 0, y: 52, w: 70, kind: "ground" },
-        { x: 88, y: 44, w: 40, h: 4, kind: "branch" },
-        { x: 146, y: 34, w: 44, h: 4, kind: "branch" },
-        { x: 208, y: 42, w: 44, h: 4, kind: "branch" },
-        { x: 270, y: 52, w: 90, kind: "ground" },
+        { x: 0, y: 52, w: 360, kind: "ground" },
+        { x: 74, y: 30, w: 50, h: 4, kind: "branch" },
+        { x: 188, y: 28, w: 30, h: 4, kind: "branch" },
       ],
       exitPipe: EXIT_W,
       entryPipe: ENTRY_W,
+      holes: {
+        knot: { x: 196, y: 28, w: 14 },
+        root: { x: 226, y: 52, w: 14 },
+      },
       route: [
         { kind: "emerge" },
-        { kind: "jump", to: [50, 52], apex: 10 },
-        { kind: "jump", to: [104, 44], apex: 10 },
-        { kind: "jump", to: [162, 34], apex: 10 },
-        { kind: "walk", to: 180 },
-        { kind: "jump", to: [226, 42], apex: 8 },
-        { kind: "jump", to: [288, 52], apex: 6 },
-        { kind: "walk", to: 304 },
+        { kind: "jump", to: [52, 52], apex: 10 },
+        { kind: "walk", to: 74 },
+        { kind: "climb", toY: 30 },
+        { kind: "walk", to: 116 },
+        { kind: "jump", to: [203, 28], apex: 4 },
+        { kind: "enter", into: "knot", weight: 0.9 },
+        { kind: "emerge", from: "root", weight: 1.3 },
+        { kind: "walk", to: 302 },
         { kind: "jump", to: [333, 36], apex: 10 },
         { kind: "enter" },
       ],
       revealAfter: 2,
       props: [
-        { kind: "trunk", x: 160, y: 64 },
-        { kind: "leaves", x: 140, y: 18 },
+        { kind: "hollowtree", x: 188, y: 52, to: [226, 52] },
+        { kind: "vine", x: 74, y: 22, h: 30 },
+        { kind: "leaves", x: 66, y: 22 },
       ],
     },
-    compact: compact({
-      start: "pipe",
-      end: "pipe",
-      kinds: ["ground", "branch", "ground"],
-      props: [{ kind: "trunk", x: 78, y: 88 }],
-    }),
+    compact: {
+      width: C,
+      height: CH,
+      platforms: [
+        { x: 0, y: 76, w: 160, kind: "ground" },
+        { x: 40, y: 46, w: 36, h: 4, kind: "branch" },
+        { x: 88, y: 40, w: 24, h: 4, kind: "branch" },
+      ],
+      exitPipe: { x: 6, y: 64, w: 22 },
+      entryPipe: ENTRY_C,
+      holes: {
+        knot: { x: 93, y: 40, w: 14 },
+        root: { x: 114, y: 76, w: 12 },
+      },
+      route: [
+        { kind: "emerge" },
+        { kind: "jump", to: [40, 76], apex: 8 },
+        { kind: "climb", toY: 46 },
+        { kind: "walk", to: 72 },
+        { kind: "jump", to: [100, 40], apex: 8 },
+        { kind: "enter", into: "knot", weight: 0.9 },
+        { kind: "emerge", from: "root", weight: 1.2 },
+        { kind: "walk", to: 124, weight: 0.3 },
+        { kind: "jump", to: [145, 64], apex: 8 },
+        { kind: "enter" },
+      ],
+      revealAfter: 2,
+      props: [
+        { kind: "hollowtree", x: 88, y: 76, to: [114, 76] },
+        { kind: "vine", x: 40, y: 38, h: 38 },
+      ],
+    },
   },
   {
     id: "archive",
@@ -400,40 +492,46 @@ export const WORLD_BANDS: WorldBand[] = [
     wide: {
       width: W,
       height: WH,
-      platforms: [
-        { x: 0, y: 52, w: 100, kind: "metal" },
-        { x: 120, y: 40, w: 30, h: 8, kind: "block" },
-        { x: 166, y: 32, w: 30, h: 8, kind: "block" },
-        { x: 212, y: 40, w: 30, h: 8, kind: "block" },
-        { x: 262, y: 52, w: 98, kind: "metal" },
-      ],
+      platforms: [{ x: 0, y: 52, w: 360, kind: "metal" }],
       exitPipe: EXIT_W,
       entryPipe: ENTRY_W,
       route: [
         { kind: "emerge" },
-        { kind: "jump", to: [64, 52], apex: 10 },
-        { kind: "walk", to: 92 },
-        { kind: "jump", to: [135, 40], apex: 8 },
-        { kind: "jump", to: [181, 32], apex: 8 },
-        { kind: "jump", to: [227, 40], apex: 6 },
-        { kind: "jump", to: [282, 52], apex: 6 },
-        { kind: "walk", to: 304 },
+        { kind: "jump", to: [66, 52], apex: 10 },
+        { kind: "ride", to: [252, 52], vehicle: "cart", cue: "rails" },
+        { kind: "jump", to: [294, 52], apex: 14, weight: 1.1 },
+        { kind: "walk", to: 302, weight: 0.3 },
         { kind: "jump", to: [333, 36], apex: 10 },
         { kind: "enter" },
       ],
       revealAfter: 2,
       props: [
-        { kind: "cabinet", x: 70, y: 52 },
-        { kind: "books", x: 170, y: 32 },
-        { kind: "cap", x: 276, y: 52 },
+        { kind: "rails", x: 52, y: 52, to: [268, 52], cue: "rails" },
+        { kind: "cabinet", x: 110, y: 52 },
+        { kind: "books", x: 160, y: 52 },
+        { kind: "cap", x: 214, y: 52 },
       ],
     },
-    compact: compact({
-      start: "pipe",
-      end: "pipe",
-      kinds: ["metal", "block", "metal"],
-      props: [{ kind: "books", x: 66, y: 58 }],
-    }),
+    compact: {
+      width: C,
+      height: CH,
+      platforms: [{ x: 0, y: 76, w: 160, kind: "metal" }],
+      exitPipe: { x: 6, y: 64, w: 22 },
+      entryPipe: ENTRY_C,
+      route: [
+        { kind: "emerge" },
+        { kind: "jump", to: [42, 76], apex: 8 },
+        { kind: "ride", to: [100, 76], vehicle: "cart", cue: "rails" },
+        { kind: "jump", to: [122, 76], apex: 12 },
+        { kind: "jump", to: [145, 64], apex: 8 },
+        { kind: "enter" },
+      ],
+      revealAfter: 2,
+      props: [
+        { kind: "rails", x: 30, y: 76, to: [112, 76], cue: "rails" },
+        { kind: "books", x: 66, y: 76 },
+      ],
+    },
   },
   {
     id: "contact",
@@ -447,32 +545,50 @@ export const WORLD_BANDS: WorldBand[] = [
       height: WH,
       platforms: [
         { x: 0, y: 52, w: 130, kind: "ground" },
-        { x: 150, y: 44, w: 40, h: 8, kind: "block" },
-        { x: 210, y: 52, w: 150, kind: "ground" },
+        { x: 220, y: 52, w: 140, kind: "ground" },
       ],
       exitPipe: EXIT_W,
       entryPipe: ENTRY_W,
       route: [
         { kind: "emerge" },
-        { kind: "jump", to: [70, 52], apex: 10 },
-        { kind: "run", to: 118 },
-        { kind: "jump", to: [168, 44], apex: 8 },
-        { kind: "jump", to: [236, 52], apex: 6 },
-        { kind: "walk", to: 304 },
+        { kind: "jump", to: [60, 52], apex: 10 },
+        { kind: "walk", to: 92 },
+        { kind: "hide", to: [92, 52], weight: 0.8, cue: "load" },
+        { kind: "fly", to: [256, 52], lift: 26, weight: 2, cue: "fire" },
+        { kind: "celebrate", weight: 0.6 },
+        { kind: "walk", to: 302 },
         { kind: "jump", to: [333, 36], apex: 10 },
         { kind: "enter" },
       ],
       revealAfter: 2,
       props: [
-        { kind: "signpost", x: 270, y: 52, label: "FINALE" },
-        { kind: "lamp", x: 96, y: 52 },
+        { kind: "lamp", x: 50, y: 52 },
+        { kind: "cannon", x: 92, y: 52, cue: "fire" },
+        { kind: "signpost", x: 276, y: 52, label: "FINALE" },
       ],
     },
-    compact: compact({
-      start: "pipe",
-      end: "pipe",
-      props: [{ kind: "signpost", x: 60, y: 58, label: "FINALE" }],
-    }),
+    compact: {
+      width: C,
+      height: CH,
+      platforms: [
+        { x: 0, y: 76, w: 60, kind: "ground" },
+        { x: 100, y: 76, w: 60, kind: "ground" },
+      ],
+      exitPipe: { x: 6, y: 64, w: 22 },
+      entryPipe: ENTRY_C,
+      route: [
+        { kind: "emerge" },
+        { kind: "jump", to: [36, 76], apex: 8 },
+        { kind: "walk", to: 44, weight: 0.4 },
+        { kind: "hide", to: [44, 76], weight: 0.7, cue: "load" },
+        { kind: "fly", to: [116, 76], lift: 30, weight: 1.8, cue: "fire" },
+        { kind: "walk", to: 122, weight: 0.3 },
+        { kind: "jump", to: [145, 64], apex: 8 },
+        { kind: "enter" },
+      ],
+      revealAfter: 2,
+      props: [{ kind: "cannon", x: 44, y: 76, cue: "fire" }],
+    },
   },
 ];
 

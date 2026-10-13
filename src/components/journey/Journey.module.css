@@ -517,15 +517,6 @@
     transform: scaleY(0.75);
   }
 }
-.belt {
-  animation: belt 0.5s steps(2) infinite;
-}
-@keyframes belt {
-  to {
-    transform: translateX(4px);
-  }
-}
-
 /* ---------- Vertical tracks ---------- */
 
 .trunkStage,
@@ -751,7 +742,6 @@
     display: none;
   }
   .flame,
-  .belt,
   .star,
   .bulbA,
   .goalFlag,
@@ -1023,111 +1013,6 @@
   }
 }
 
-/* ---------- Title screen ---------- */
-.title {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: grid;
-  place-items: center;
-  padding: var(--s-5);
-  background:
-    radial-gradient(ellipse 60% 50% at 50% 60%, rgba(132, 155, 184, 0.16), transparent 70%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 3px),
-    #0b0e12;
-  /* Iris-out when leaving */
-  clip-path: circle(150% at 50% 55%);
-  transition: clip-path 800ms steps(10);
-}
-.title[data-leaving="true"] {
-  clip-path: circle(0% at 50% 55%);
-}
-.titleInner {
-  display: grid;
-  justify-items: center;
-  gap: var(--s-4);
-  text-align: center;
-}
-.titleEyebrow {
-  font-family: var(--font-pixel);
-  font-size: 0.75rem;
-  color: var(--steel);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-.titleLogo {
-  font-family: var(--font-pixel);
-  font-size: clamp(2.6rem, 1rem + 8vw, 6rem);
-  font-weight: 400;
-  line-height: 1;
-  color: var(--text);
-  text-shadow:
-    4px 4px 0 #3a4454,
-    8px 8px 0 rgba(0, 0, 0, 0.6);
-}
-.titleLogo span {
-  color: #f2d27a;
-}
-.titleHero {
-  display: grid;
-  justify-items: center;
-}
-.titleHero svg {
-  animation: titleBob 0.8s steps(2) infinite;
-}
-@keyframes titleBob {
-  50% {
-    transform: translateY(-6px);
-  }
-}
-.titleGround {
-  width: 220px;
-  height: 10px;
-  background:
-    linear-gradient(#5c6f88 0 3px, #2a313c 3px);
-}
-.pressStart {
-  min-height: 52px;
-  padding: 0 28px;
-  border: 3px solid #0b0e12;
-  background: #f2d27a;
-  color: #101419;
-  font-family: var(--font-pixel);
-  font-size: 1rem;
-  text-transform: uppercase;
-  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.55);
-  cursor: pointer;
-  animation: pressBlink 1.2s steps(1) infinite;
-}
-.pressStart:hover,
-.pressStart:focus-visible {
-  animation: none;
-  transform: translate(-1px, -1px);
-}
-@keyframes pressBlink {
-  60% {
-    filter: brightness(0.75);
-  }
-}
-.titleSound {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--text-3);
-}
-.skip {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--line-strong);
-  background: none;
-  color: var(--text-2);
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  cursor: pointer;
-}
-.skip:hover {
-  color: var(--text);
-}
-
 /* ---------- Game actors ---------- */
 .bossWrap,
 .boss {
@@ -1326,13 +1211,6 @@
   .hudSaved {
     display: none;
   }
-}
-
-.continueQ {
-  font-family: var(--font-pixel);
-  font-size: 1.1rem;
-  color: #f2d27a;
-  animation: pressBlink 1s steps(1) infinite;
 }
 
 /* ---------- Atmosphere per world (animates only while in view) ---------- */
@@ -1672,5 +1550,84 @@
   .cloud,
   .twinkle {
     animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/*  Band set pieces: props that react to the route (data-cue-state)          */
+/* ------------------------------------------------------------------------ */
+
+/* Springboard squashes, then throws the character up. */
+[data-cue-state="on"] > .springCoil {
+  animation: boing 0.5s steps(4) 1;
+}
+@keyframes boing {
+  0% {
+    transform: scaleY(0.4);
+  }
+  40% {
+    transform: scaleY(1.35);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+/* Cannon: fuse sparks while loading, recoil + muzzle flash when it fires. */
+.fuse,
+.cannonFlash {
+  opacity: 0;
+}
+[data-cue-state="on"] > .fuse {
+  animation: fuse 0.2s steps(1) infinite;
+}
+@keyframes fuse {
+  50% {
+    opacity: 1;
+  }
+}
+[data-cue-state="on"] > .cannonFlash {
+  animation: flash 0.45s steps(3) 1;
+}
+@keyframes flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+[data-cue-state="on"] > .cannonBody {
+  animation: recoil 0.4s steps(3) 1;
+}
+@keyframes recoil {
+  0% {
+    transform: translate(-3px, 2px);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Mine cart wheels spin while the rails are in use. */
+.wheel {
+  transform-box: view-box;
+}
+.band:has([data-cue="rails"][data-cue-state="on"]) .wheel {
+  animation: wheel 0.24s steps(2) infinite;
+}
+@keyframes wheel {
+  50% {
+    transform: scaleX(-1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .springCoil,
+  .fuse,
+  .cannonFlash,
+  .cannonBody,
+  .wheel {
+    animation: none !important;
   }
 }

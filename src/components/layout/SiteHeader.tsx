@@ -46,14 +46,32 @@ export function SiteHeader() {
   };
   const closeMap = () => mapRef.current?.close();
 
+  // Replay: back to the spawn point with a fresh game (score, coins, blocks,
+  // save point). A reload is the simplest way to reset every world's state.
+  const replay = () => {
+    play("pipe");
+    try {
+      localStorage.removeItem("anish.save");
+    } catch {
+      /* storage unavailable */
+    }
+    history.scrollRestoration = "manual";
+    window.scrollTo({ top: 0, behavior: "instant" });
+    // Already at "/" (no #section): reload. Otherwise load "/" fresh, which drops the hash.
+    if (window.location.pathname === "/" && !window.location.hash) window.location.reload();
+    else window.location.assign("/");
+  };
+
   return (
     <header className={styles.header}>
       <div className={`container ${styles.bar}`}>
-        <Link href="/#home" className={styles.brand} aria-label="ANISH.EXE — home">
+        <Link href="/#home" className={styles.brand} aria-label="Anish Karthikeyan — home">
           <span className={styles.logo} aria-hidden="true">
             A
           </span>
-          <span className="pixel">ANISH.EXE</span>
+          <span className="pixel">
+            ANISH <span className={styles.brandAccent}>KARTHIKEYAN</span>
+          </span>
         </Link>
 
         <nav aria-label="Worlds" className={styles.worlds}>
@@ -95,6 +113,15 @@ export function SiteHeader() {
             }}
           >
             <span aria-hidden="true" className={styles.speaker} data-on={sound} />
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${styles.iconBtn}`}
+            onClick={replay}
+            aria-label="Replay from the start"
+            title="Replay from the start (resets score)"
+          >
+            <span aria-hidden="true">↺</span>
           </button>
           <button type="button" className={`btn btn-sm ${styles.mapBtn}`} onClick={openMap} aria-haspopup="dialog" title="World map (M)">
             <span aria-hidden="true" className={styles.mapIcon} />

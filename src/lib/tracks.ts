@@ -5,7 +5,7 @@
  *   corridor  – horizontal strip: islands, character select, dungeon,
  *               castle battlements, trophy room, overworld map
  *   tree      – climbs down the skill tree trunk, in and out of knot holes
- *   conveyor  – rides a belt through the system-design machine room
+ *   gate      – a request waits at token-bucket gates (rate limiter)
  *   (game worlds — maze, lab, girders, dungeon, invaders — live in games.ts)
  *   finale    – stair bricks → star → flagpole slide → portal
  *
@@ -333,37 +333,69 @@ export function buildTree(opts: TreeOptions): TrackLayout | null {
 }
 
 /* ------------------------------------------------------------------------- */
-/*  Conveyor                                                                 */
+/*  Token-bucket gates (rate limiter)                                        */
 /* ------------------------------------------------------------------------- */
 
-export const CONVEYOR_H = 40;
+export const GATE_H = 52;
 
-/** Rides a conveyor belt across the machine room. */
-export function buildConveyor(opts: { width: number }): TrackLayout | null {
+export interface GateMeta {
+  /** Floor (feet) height. */
+  ground: number;
+  /** Gate centers; `throttled` gates make the request wait for a token. */
+  gates: { x: number; id: string; throttled: boolean }[];
+}
+
+/**
+ * Token-bucket rate limiter (System design): the character is a request
+ * walking through API gates. A gate with a token in its bucket lets it
+ * straight through; an empty bucket answers 429 and the request waits until
+ * a token refills, then the barrier lifts.
+ */
+export function buildTokenGate(opts: { width: number; id?: string }): TrackLayout | null {
   const W = snap(opts.width);
-  if (W < 110) return null;
-  const g = CONVEYOR_H - 4;
+  if (W < 150) return null;
+  const id = opts.id ?? "gate";
+  const g = GATE_H - 4;
   const exitPipe = { x: 2, y: g - PIPE_H, w: PIPE_W };
   const entryPipe = { x: W - PIPE_W - 2, y: g - PIPE_H, w: PIPE_W };
+  const n = W >= 260 ? 3 : 2;
+  const span = W - 2 * 48;
+  // The middle (or second) gate is the one that throttles.
+  const gates = Array.from({ length: n }, (_, i) => ({
+    x: Math.round(48 + (span * (i + 0.5)) / n),
+    id: `${id}-gate-${i}`,
+    throttled: i === 1,
+  }));
+  const route: RouteStep[] = [{ kind: "emerge" }, { kind: "jump", to: [30, g], apex: 5 }];
+  for (const gt of gates) {
+    route.push({ kind: "walk", to: gt.x - 14 });
+    if (gt.throttled) route.push({ kind: "idle", weight: 1.4 });
+    route.push({ kind: "idle", weight: gt.throttled ? 0.6 : 0.35, event: gt.id });
+  }
+  route.push(
+    { kind: "run", to: entryPipe.x - 12 },
+    { kind: "jump", to: [entryPipe.x + PIPE_W / 2, entryPipe.y], apex: 6 },
+    { kind: "enter" },
+  );
   return {
     width: W,
-    height: CONVEYOR_H,
-    platforms: [
-      { x: 0, y: g, w: 26, kind: "metal" },
-      { x: 28, y: g, w: W - 56, h: 4, kind: "metal" },
-      { x: W - 26, y: g, w: 26, kind: "metal" },
-    ],
+    height: GATE_H,
+    platforms: [{ x: 0, y: g, w: W, kind: "metal" }],
     exitPipe,
     entryPipe,
-    route: [
-      { kind: "emerge" },
-      { kind: "jump", to: [40, g], apex: 5 },
-      { kind: "ride", to: [W - 40, g] },
-      { kind: "jump", to: [entryPipe.x + PIPE_W / 2, entryPipe.y], apex: 6 },
-      { kind: "enter" },
-    ],
+    route,
     revealAfter: 1,
     props: [],
+    blocks: gates.map((gt) => ({
+      id: gt.id,
+      kind: "gate" as const,
+      x: gt.x - 4,
+      y: g - 30,
+      points: gt.throttled ? 300 : 100,
+      label: gt.throttled ? "429 → token refilled → 200 OK" : "Token spent → 200 OK",
+      say: gt.throttled ? "429… waiting for a token. OK, through!" : undefined,
+    })),
+    meta: { gate: { ground: g, gates } satisfies GateMeta },
   };
 }
 

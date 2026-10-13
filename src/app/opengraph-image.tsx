@@ -3,7 +3,7 @@ import { toRuns } from "@/components/pixel/PixelSprite";
 import { CHARACTER, CHARACTER_EYES, CHARACTER_PALETTE } from "@/components/pixel/sprites";
 import { education, profile } from "@/data/portfolio";
 
-export const alt = "ANISH.EXE — Anish Karthikeyan, software engineering and applied AI portfolio";
+export const alt = "Anish Karthikeyan — software engineering and applied AI portfolio";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

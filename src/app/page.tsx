@@ -13,7 +13,6 @@ import { getVisibleSections } from "@/lib/content";
 import { WorldZone } from "@/components/journey/WorldZone";
 import { JourneyController } from "@/components/journey/JourneyController";
 import { Hud } from "@/components/journey/Hud";
-import { TitleScreen } from "@/components/journey/TitleScreen";
 import journey from "@/components/journey/Journey.module.css";
 
 export default function Home() {
@@ -23,7 +22,6 @@ export default function Home() {
   // animates one character through every zone.
   return (
     <>
-      <TitleScreen />
       <Hero />
       <div className={journey.root}>
         <WorldZone world="spawn">

@@ -3,6 +3,7 @@ import { WORLD_BANDS, type BandLayout } from "@/data/worlds";
 import { HERO_FRAMES, HERO_H, HERO_W } from "@/components/journey/heroSprite";
 import {
   bandProgress,
+  CART_CLIP,
   characterAt,
   compileRoute,
   parallaxOffset,
@@ -132,10 +133,11 @@ describe.each(layouts)("route %s", (_name, layout) => {
     expect(characterAt(route, layout, 1).visible).toBe(!route.endsInPipe);
   });
 
-  it("clips the sprite while emerging and entering, never otherwise", () => {
+  it("clips the sprite only in pipes and mine carts", () => {
     for (let i = 0; i <= 400; i++) {
       const st = characterAt(route, layout, i / 400);
-      if (st.clip > 0) expect(st.frame === "pipe" || st.frame === "land" || st.frame === "fall").toBe(true);
+      if (st.clip > 0 && st.riding) expect(st.clip).toBe(CART_CLIP);
+      else if (st.clip > 0) expect(st.frame === "pipe" || st.frame === "land" || st.frame === "fall").toBe(true);
     }
   });
 
@@ -149,6 +151,26 @@ describe.each(layouts)("route %s", (_name, layout) => {
     const rest = restState(route, layout);
     expect(rest.visible).toBe(true);
     expect(onSurface(layout, rest.x, rest.y)).toBe(true);
+  });
+});
+
+describe("variety", () => {
+  it("gives every world its own way of travelling", () => {
+    const signature = (l: BandLayout) =>
+      l.route
+        .map((s) =>
+          s.kind === "ride" ? `ride:${s.vehicle ?? ""}`
+          : s.kind === "enter" && s.into ? `enter:${s.into}`
+          : s.cue ? `${s.kind}:${s.cue}`
+          : s.kind,
+        )
+        .filter((k) => !["emerge", "enter", "walk", "run", "jump", "idle"].includes(k))
+        .join(",");
+    for (const variant of ["wide", "compact"] as const) {
+      const sigs = WORLD_BANDS.map((b) => signature(b[variant]));
+      sigs.forEach((s, i) => expect(s, `${WORLD_BANDS[i].id}/${variant} has a signature move`).not.toBe(""));
+      expect(new Set(sigs).size, variant).toBe(sigs.length);
+    }
   });
 });
 

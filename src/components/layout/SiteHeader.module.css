@@ -15,6 +15,10 @@
   height: var(--header-h);
 }
 
+.brandAccent {
+  color: #f2d27a;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -246,6 +250,12 @@
   }
   .controls {
     margin-left: auto;
+  }
+}
+@media (max-width: 520px) {
+  /* Phones: the header shows "ANISH"; the full name is in the hero below. */
+  .brandAccent {
+    display: none;
   }
 }
 @media (max-width: 380px) {

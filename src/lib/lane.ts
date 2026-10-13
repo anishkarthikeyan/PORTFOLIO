@@ -7,6 +7,10 @@
  *           B ◀── landing  ◀──┘
  *   A1 ──▶ … (one A per heading / right-column card)
  *   END ════════▶ [pipe]       enter → warp onward
+ *
+ * The way down rotates (pole slide → ladder → hop) so the descent never
+ * repeats the same move twice in a row. Poles and ladders hang from a ledge's
+ * edge, which lies inside the next ledge's span.
  */
 import type { PipeSpec, RouteStep, TrackLayout } from "@/data/worlds";
 
@@ -38,6 +42,8 @@ export interface LaneLedge {
   /** Where the character lands on this ledge, and where it leaves it. */
   landX: number;
   edgeX: number;
+  /** How the character gets down to the next ledge (drawn as a pole/ladder). */
+  down?: "hop" | "pole" | "ladder";
 }
 
 export interface Lane {
@@ -104,11 +110,23 @@ export function buildLane(input: { width: number; height: number; anchors: numbe
   const exitPipe = { x: 0, y: first - LANE.pipeH, w: LANE.pipeW };
   const entryPipe = { x: pipeX, y: endY - LANE.pipeH, w: LANE.pipeW };
 
+  const DOWN = ["pole", "ladder", "hop"] as const;
+  ledges.forEach((l, i) => {
+    const next = ledges[i + 1];
+    if (!next) return;
+    l.down = DOWN[i % DOWN.length];
+    // Poles/ladders drop straight down from the edge, so the next ledge is landed on there.
+    if (l.down !== "hop") next.landX = l.edgeX;
+  });
+
   const route: RouteStep[] = [{ kind: "emerge" }, { kind: "jump", to: [ledges[0].landX, ledges[0].y], apex: 10 }];
   ledges.forEach((l, i) => {
     if (l.edgeX !== l.landX) route.push({ kind: "walk", to: l.edgeX });
     const next = ledges[i + 1];
-    if (next) route.push({ kind: "jump", to: [next.landX, next.y], apex: 4 });
+    if (!next) return;
+    if (l.down === "pole") route.push({ kind: "slide", toY: next.y });
+    else if (l.down === "ladder") route.push({ kind: "climb", toY: next.y });
+    else route.push({ kind: "jump", to: [next.landX, next.y], apex: 4 });
   });
   route.push({ kind: "jump", to: [entryPipe.x + LANE.pipeW / 2, entryPipe.y], apex: 10 }, { kind: "enter" });
 

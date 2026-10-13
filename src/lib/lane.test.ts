@@ -33,10 +33,19 @@ describe.each(cases)("lane: %s", (_name, input) => {
 
   it("route visits every ledge in order and ends inside the exit pipe", () => {
     const route = compileRoute(lane.layout);
-    const landings = route.segments.filter((s) => s.step.kind === "jump").map((s) => s.to[1]);
+    const landings = route.segments.filter((s) => ["jump", "slide", "climb"].includes(s.step.kind)).map((s) => s.to[1]);
     for (const l of lane.ledges) expect(landings).toContain(l.y);
     expect(route.endsInPipe).toBe(true);
     expect(stateAtBeat(route, route.total).visible).toBe(false);
+  });
+});
+
+describe("lane variety", () => {
+  it("rotates the way down so consecutive ledges never repeat a move", () => {
+    const lane = buildLane({ width: 50, height: 900, anchors: [] })!;
+    const downs = lane.ledges.map((l) => l.down).filter(Boolean);
+    expect(new Set(downs).size).toBe(3);
+    downs.slice(1).forEach((d, i) => expect(d).not.toBe(downs[i]));
   });
 });
 

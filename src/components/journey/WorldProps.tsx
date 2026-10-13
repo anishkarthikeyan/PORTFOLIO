@@ -191,6 +191,129 @@ export function WorldProp({ prop }: { prop: PropSpec }) {
           {label && <Tag x={x + 6} y={y - 10} text={label} />}
         </g>
       );
+    case "ladder": {
+      // Centered on x, top at y.
+      const h = prop.h ?? 20;
+      return (
+        <g>
+          <rect x={x - 5} y={y} width={1} height={h} fill="#8c5439" />
+          <rect x={x + 4} y={y} width={1} height={h} fill="#8c5439" />
+          {Array.from({ length: Math.floor(h / 4) }, (_, i) => (
+            <rect key={i} x={x - 4} y={y + 2 + i * 4} width={8} height={1} fill="#c27a4f" />
+          ))}
+        </g>
+      );
+    }
+    case "pole": {
+      const h = prop.h ?? 20;
+      return (
+        <g>
+          <rect x={x - 1} y={y} width={2} height={h} fill="#a7adb8" />
+          <rect x={x - 1} y={y} width={1} height={h} fill="#eef1f5" />
+          <rect x={x - 2} y={y - 2} width={4} height={2} fill="#e8b84f" />
+        </g>
+      );
+    }
+    case "vine": {
+      const h = prop.h ?? 20;
+      return (
+        <g>
+          {Array.from({ length: h }, (_, i) => (
+            <rect key={i} x={x - 1 + (Math.floor(i / 3) % 2)} y={y + i} width={1} height={1} fill="#3f8a4b" />
+          ))}
+          {Array.from({ length: Math.floor(h / 6) }, (_, i) => (
+            <rect key={`l${i}`} x={i % 2 ? x + 1 : x - 4} y={y + 3 + i * 6} width={3} height={2} fill="#62b06a" />
+          ))}
+        </g>
+      );
+    }
+    case "spring":
+      // 12 wide, centered on x + 6; the coil squashes when the cue fires.
+      return (
+        <g data-cue={prop.cue}>
+          <rect x={x} y={y - 2} width={12} height={2} fill="#3a4454" />
+          <g className={styles.springCoil} style={{ transformOrigin: `${x + 6}px ${y - 2}px` }}>
+            {[0, 1, 2].map((i) => (
+              <rect key={i} x={x + 2 + (i % 2) * 2} y={y - 4 - i * 2} width={6} height={1} fill="#a7adb8" />
+            ))}
+            <rect x={x + 1} y={y - 9} width={10} height={2} fill="#c86b5e" />
+            <rect x={x + 1} y={y - 9} width={10} height={1} fill="#e0a070" />
+          </g>
+        </g>
+      );
+    case "zipline": {
+      // Cable runs 27 px above the feet path (just over the head), between two posts.
+      const [x2, y2] = prop.to ?? [x + 100, y];
+      return (
+        <g>
+          <rect x={x - 4} y={y - 30} width={2} height={30} fill="#5c6f88" />
+          <rect x={x2 + 6} y={y2 - 30} width={2} height={30} fill="#5c6f88" />
+          <line x1={x - 3} y1={y - 28} x2={x2 + 7} y2={y2 - 26} stroke="#a7adb8" strokeWidth={0.8} shapeRendering="auto" />
+        </g>
+      );
+    }
+    case "cannon":
+      // Centered on x, aimed up and to the right.
+      return (
+        <g data-cue={prop.cue}>
+          <g className={styles.cannonBody} style={{ transformOrigin: `${x}px ${y - 6}px` }}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <rect key={i} x={x - 6 + i * 3} y={y - 11 - i * 2} width={6} height={7} fill={i === 4 ? "#3a4454" : "#2c3542"} />
+            ))}
+            <rect x={x + 7} y={y - 21} width={6} height={1} fill="#5c6f88" />
+            <rect x={x - 5} y={y - 11} width={10} height={1} fill="#46505f" />
+          </g>
+          <rect x={x - 5} y={y - 6} width={10} height={6} fill="#75442f" />
+          <rect x={x - 3} y={y - 4} width={6} height={2} fill="#4a2a1c" />
+          <rect x={x - 1} y={y - 3} width={2} height={1} fill="#c27a4f" />
+          <g data-cue="load">
+            <rect x={x - 8} y={y - 10} width={2} height={1} fill="#a7adb8" />
+            <rect x={x - 9} y={y - 12} width={2} height={2} fill="#f2d27a" className={styles.fuse} />
+          </g>
+          <g className={styles.cannonFlash}>
+            <rect x={x + 12} y={y - 26} width={6} height={4} fill="#f2d27a" />
+            <rect x={x + 14} y={y - 28} width={4} height={2} fill="#fff4d6" />
+            <rect x={x + 9} y={y - 24} width={3} height={3} fill="#e8b84f" />
+            <rect x={x + 18} y={y - 23} width={3} height={2} fill="#a7adb8" />
+          </g>
+        </g>
+      );
+    case "rails": {
+      const x2 = prop.to?.[0] ?? x + 100;
+      return (
+        <g data-cue={prop.cue}>
+          {Array.from({ length: Math.floor((x2 - x) / 5) }, (_, i) => (
+            <rect key={i} x={x + i * 5} y={y - 1} width={3} height={1} fill="#4a2a1c" />
+          ))}
+          <rect x={x} y={y - 2} width={x2 - x} height={1} fill="#a7adb8" />
+          {/* Buffer stop */}
+          <rect x={x2} y={y - 9} width={4} height={9} fill="#3a4454" />
+          <rect x={x2} y={y - 9} width={4} height={2} fill="#c86b5e" />
+          <rect x={x2} y={y - 5} width={4} height={2} fill="#e8b84f" />
+        </g>
+      );
+    }
+    case "hollowtree": {
+      // Trunk under the branch platform that starts at x; roots reach the root hole at `to`.
+      const rx = prop.to?.[0] ?? x + 40;
+      const top = y - 22;
+      return (
+        <g>
+          <rect x={x + 4} y={top} width={22} height={22} fill="#4a2a1c" />
+          <rect x={x + 6} y={top} width={3} height={22} fill="#5a3322" />
+          <rect x={x + 22} y={top} width={2} height={22} fill="#2b1a12" />
+          <rect x={x + 12} y={top + 6} width={6} height={9} fill="#2b1a12" />
+          <rect x={x + 13} y={top + 7} width={4} height={7} fill="#120c08" />
+          <rect x={x + 26} y={y - 3} width={rx - x - 26} height={3} fill="#4a2a1c" />
+          <rect x={x} y={y - 4} width={4} height={4} fill="#4a2a1c" />
+          {[
+            [x - 12, top - 9, 14, 7], [x - 6, top - 14, 10, 6], [x + 28, top - 10, 14, 7], [x + 32, top - 15, 9, 6],
+          ].map(([lx, ly, w, h], i) => (
+            <rect key={i} x={lx} y={ly} width={w} height={h} fill={i % 2 ? "#2f6b3a" : "#3f8a4b"} />
+          ))}
+        </g>
+      );
+    }
     default:
       return null;
   }

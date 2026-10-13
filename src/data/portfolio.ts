@@ -44,7 +44,7 @@ import type {
 
 export const site: SiteConfig = {
   url: null, // REPLACE ME: "https://your-domain.dev" (used for canonical + Open Graph URLs)
-  title: "ANISH.EXE — Anish Karthikeyan",
+  title: "Anish Karthikeyan — Portfolio",
   description:
     "Portfolio of Anish Karthikeyan, B.E. Computer Science and Engineering student at Chennai Institute of Technology (expected 2028), focused on software engineering, backend systems, and applied AI.",
   hideSampleContent: false,
@@ -62,7 +62,7 @@ export const site: SiteConfig = {
 
 export const profile: Profile = {
   name: "Anish Karthikeyan", // confirmed
-  brand: "ANISH.EXE",
+  brand: "ANISH KARTHIKEYAN",
   taglineWords: ["CODE", "AI", "BUILD", "LEARN", "GROW"],
   positioning: ["SOFTWARE ENGINEER", "APPLIED AI", "BACKEND SYSTEMS"],
   headline: "BUILDING SOFTWARE SYSTEMS AND AI-POWERED APPLICATIONS",

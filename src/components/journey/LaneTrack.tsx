@@ -42,6 +42,27 @@ export function LaneTrack({ id, world, label }: { id: string; world: number; lab
           scale={scale}
           back={
             <g>
+              {/* Poles and ladders hanging from a ledge's edge down to the next ledge */}
+              {lane.ledges.map((l, i) => {
+                const next = lane.ledges[i + 1];
+                if (!next || l.down === "hop") return null;
+                const h = next.y - l.y;
+                return l.down === "pole" ? (
+                  <g key={`d${i}`}>
+                    <rect x={l.edgeX - 1} y={l.y} width={2} height={h} fill="#a7adb8" />
+                    <rect x={l.edgeX - 1} y={l.y} width={1} height={h} fill="#eef1f5" />
+                    <rect x={l.edgeX - 2} y={l.y - 2} width={4} height={2} fill="#e8b84f" />
+                  </g>
+                ) : (
+                  <g key={`d${i}`}>
+                    <rect x={l.edgeX - 5} y={l.y} width={1} height={h} fill="#8c5439" />
+                    <rect x={l.edgeX + 4} y={l.y} width={1} height={h} fill="#8c5439" />
+                    {Array.from({ length: Math.floor(h / 4) }, (_, k) => (
+                      <rect key={k} x={l.edgeX - 4} y={l.y + 2 + k * 4} width={8} height={1} fill="#c27a4f" />
+                    ))}
+                  </g>
+                );
+              })}
               {lane.ledges.map((l, i) =>
                 l.anchored ? (
                   <g key={i}>

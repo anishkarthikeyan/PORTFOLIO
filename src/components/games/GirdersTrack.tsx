@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef } from "react";
+import { PixelGroup } from "@/components/pixel/PixelSprite";
+import { APE_PALETTE, APE_POUND, APE_THROW } from "@/components/pixel/sprites";
 import { buildGirders, type GirderMeta } from "@/lib/games";
 import { TrackScene } from "@/components/journey/TrackScene";
 import { useTrack } from "@/components/journey/useTrack";
@@ -9,8 +11,8 @@ import styles from "./Games.module.css";
 
 /**
  * Girders and ladders (Experience world, Donkey Kong inspired): each girder
- * below the top is one experience entry. "Deadline" barrels roll at the
- * character, who jumps them on the way down.
+ * below the top is one experience entry. "Big Deadline", an ape on the top
+ * girder, hurls barrels that the character jumps on the way down.
  */
 export function GirdersTrack({ id, labels }: { id: string; labels: string[] }) {
   const barrels = useRef<(SVGGElement | null)[]>([]);
@@ -74,15 +76,21 @@ export function GirdersTrack({ id, labels }: { id: string; labels: string[] }) {
                   )}
                 </g>
               ))}
-              {/* "Deadline" — an original clock-bot throwing barrels from the top girder */}
-              <g className={styles.deadline}>
-                <rect x={layout.width - 34} y={meta.girders[0].y - 18} width={18} height={18} fill="#3a4454" />
-                <rect x={layout.width - 31} y={meta.girders[0].y - 15} width={12} height={10} fill="#eef1f5" />
-                <rect x={layout.width - 26} y={meta.girders[0].y - 14} width={1} height={5} fill="#101419" />
-                <rect x={layout.width - 26} y={meta.girders[0].y - 10} width={4} height={1} fill="#101419" />
-                <rect x={layout.width - 38} y={meta.girders[0].y - 12} width={4} height={3} fill="#3a4454" className={styles.arm} />
-                <text x={layout.width - 25} y={meta.girders[0].y - 21} textAnchor="middle" className={styles.girderLabel}>
-                  DEADLINE
+              {/* "Big Deadline" — an original ape on the top girder: pounds its chest, then hurls barrels */}
+              <g transform={`translate(${layout.width - 27} ${meta.girders[0].y - 22})`}>
+                <g className={styles.apePound}>
+                  <PixelGroup rows={APE_POUND} palette={APE_PALETTE} />
+                </g>
+                <g className={styles.apeThrow}>
+                  <PixelGroup rows={APE_THROW} palette={APE_PALETTE} />
+                  <g transform="translate(9 -6)">
+                    <rect x={0} y={0} width={8} height={7} fill="#8c5439" />
+                    <rect x={0} y={2} width={8} height={1} fill="#4a2a1c" />
+                    <rect x={0} y={5} width={8} height={1} fill="#4a2a1c" />
+                  </g>
+                </g>
+                <text x={13} y={-3} textAnchor="middle" className={styles.girderLabel}>
+                  BIG DEADLINE
                 </text>
               </g>
             </g>

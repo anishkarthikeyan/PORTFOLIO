@@ -10,7 +10,9 @@ export function SiteFooter() {
     <footer className={styles.footer}>
       <div className={`container ${styles.inner}`}>
         <div className={styles.id}>
-          <p className="pixel">ANISH.EXE</p>
+          <p className="pixel">
+            ANISH <span style={{ color: "#f2d27a" }}>KARTHIKEYAN</span>
+          </p>
           <p className="muted">
             {profile.name} · {edu.degree} {edu.field}, {edu.institution} · Expected {edu.expectedGraduation}
           </p>
