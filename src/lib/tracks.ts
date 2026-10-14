@@ -123,16 +123,22 @@ export function buildCorridor(opts: CorridorOptions): TrackLayout | null {
     }
     return { ...st, x: best };
   };
-  const stops = [...opts.stops]
-    .map((s) => nudge({ ...s, x: Math.min(maxX, Math.max(minX, s.x)) }))
-    .sort((a, b) => a.x - b.x)
-    .filter((s) => {
-      // Stops must not sit in a gap and need room between them.
-      if (s.kind !== "bug" && gaps.some(([a, b]) => s.x > a - 14 && s.x < b + 14)) return false;
-      if (s.x - last < 28) return false;
-      last = s.x;
-      return true;
-    });
+  const stops: CorridorStop[] = [];
+  for (const s of [...opts.stops].map((s) => nudge({ ...s, x: Math.min(maxX, Math.max(minX, s.x)) })).sort((a, b) => a.x - b.x)) {
+    // Stops must not sit in a gap and need room between them. When two crowd
+    // each other (narrow screens), a content block wins: it unlocks its card.
+    if (s.kind !== "bug" && gaps.some(([a, b]) => s.x > a - 14 && s.x < b + 14)) continue;
+    if (s.x - last < 28) {
+      const prev = stops[stops.length - 1];
+      if (prev && s.kind === "block" && prev.kind !== "block") {
+        stops[stops.length - 1] = s;
+        last = s.x;
+      }
+      continue;
+    }
+    stops.push(s);
+    last = s.x;
+  }
 
   const pedestals: PlatformSpec[] = [];
   const pid = opts.id ?? "c";

@@ -1,0 +1,45 @@
+/*
+ * Pinned scene. Default (no JavaScript yet): the strip scrolls sideways
+ * natively. data-pinned="true": sticky stage + scroll-driven camera.
+ * data-pinned="false" (reduced motion): items wrap into a vertical layout.
+ */
+.scene {
+  position: relative;
+  /* Clears the fixed header + score bar while pinned. */
+  --pin-top: calc(var(--header-h) + 26px);
+}
+
+.stage {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.strip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-7, 64px);
+  width: max-content;
+  /* Line the first world up with the page content; let the last one reach mid-screen. */
+  padding-inline: max(var(--gutter), calc((100vw - var(--container)) / 2 + var(--gutter))) 20vw;
+  padding-block: var(--s-3);
+}
+
+.scene[data-pinned="true"] .stage {
+  position: sticky;
+  top: var(--pin-top);
+  height: calc(100svh - var(--pin-top));
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  /* Too tall to fit: keep the top (the game strip) in view rather than both ends cut. */
+  align-items: safe center;
+}
+.scene[data-pinned="true"] .strip {
+  will-change: transform;
+}
+
+.scene[data-pinned="false"] .strip {
+  flex-direction: column;
+  width: auto;
+  padding-inline: max(var(--gutter), calc((100vw - var(--container)) / 2 + var(--gutter)));
+}

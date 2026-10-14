@@ -184,8 +184,35 @@
 
 /* ---------- In-world: islands + level doors ---------- */
 
-.island + .island {
-  margin-top: var(--s-6);
+/* Islands sit side by side in the pinned scene; each is as wide as its row of cards. */
+.island {
+  flex: none;
+}
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-4);
+}
+.row > .cell {
+  /* Card width: most of a phone screen, a comfortable column on tablets/desktop. */
+  width: min(84vw, 400px);
+}
+/* Not pinned (reduced motion, or too short a screen): cards wrap like a normal grid. */
+:global([data-pinned="false"]) .row {
+  flex-wrap: wrap;
+}
+:global([data-pinned="false"]) .row > .cell {
+  width: min(100%, 560px);
+  flex: 1 1 320px;
+}
+/* Short screens: when the pinned level wouldn't fit under the header, cards
+   drop the mini diagram (it's on each project's page) and tighten up. */
+:global([data-fit="compact"]) .row .cardDiagram {
+  display: none;
+}
+:global([data-fit="compact"]) .row .card {
+  gap: var(--s-2);
+  padding: var(--s-4);
 }
 
 .level {

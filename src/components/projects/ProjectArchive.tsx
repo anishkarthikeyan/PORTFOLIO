@@ -33,9 +33,9 @@ export function ProjectArchive() {
           )}
         </SectionHeader>
 
-        {projects.length === 0 ? (
-          <p className="muted">Projects are being documented — check back soon.</p>
-        ) : (
+        {projects.length === 0 && <p className="muted">Projects are being documented — check back soon.</p>}
+      </div>
+      {projects.length > 0 && (
           <ProjectFilter
             counts={counts}
             items={projects.map((p, i) => ({
@@ -46,8 +46,7 @@ export function ProjectArchive() {
               node: <ProjectCard project={p} level={`2-${i + 1}`} />,
             }))}
           />
-        )}
-      </div>
+      )}
     </section>
   );
 }

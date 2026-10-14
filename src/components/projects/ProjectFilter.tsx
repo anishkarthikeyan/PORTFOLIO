@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Track } from "@/data/types";
 import { Corridor } from "@/components/journey/Corridor";
+import { PinnedScene } from "@/components/scene/PinnedScene";
 import styles from "./Projects.module.css";
 
 type Filter = "all" | Track;
@@ -41,7 +42,7 @@ export function ProjectFilter({
 
   return (
     <>
-      <div className={styles.filterRow}>
+      <div className={`container ${styles.filterRow}`}>
         <div className="segmented" role="group" aria-label="Filter projects by career track">
           {OPTIONS.map((o) => (
             <button key={o.id} type="button" aria-pressed={filter === o.id} onClick={() => setFilter(o.id)}>
@@ -56,7 +57,12 @@ export function ProjectFilter({
           Showing {shown.length} project{shown.length === 1 ? "" : "s"}
         </p>
       </div>
-      {/* One island per track: a corridor with a "?" block above each card, then the cards. */}
+      {/*
+        A side-scrolling level: scrolling down moves the camera right across the
+        islands. One island per track: a corridor with a "?" block above each
+        card, then the cards in a row.
+      */}
+      <PinnedScene label="Project worlds: scroll down to travel sideways through the levels">
       {(["sde", "aiml"] as const).map((track) => {
         const group = shown.filter((i) => i.track === track);
         if (!group.length) return null;
@@ -88,9 +94,9 @@ export function ProjectFilter({
                 label: i.highlight.length > 90 ? `${i.highlight.slice(0, 88)}…` : i.highlight,
               }))}
             />
-            <div className={styles.grid}>
+            <div className={styles.row}>
               {group.map((i) => (
-                <div key={i.key} className={styles.cell}>
+                <div key={i.key} className={styles.cell} data-pin-stop>
                   {i.node}
                 </div>
               ))}
@@ -98,6 +104,7 @@ export function ProjectFilter({
           </div>
         );
       })}
+      </PinnedScene>
     </>
   );
 }

@@ -6,6 +6,7 @@ import { compileRoute, restState, standingBeat, stateAtBeat, type CharacterState
 import { buildJourneyMap, CHASE, chaseStep, crossedEvents, locate, targetBeat, type JourneyMap, type TrackWindow } from "@/lib/chase";
 import { buildHeroSheet, HERO_FRAME_INDEX, HERO_FRAME_ORDER, HERO_H, HERO_W } from "./heroSprite";
 import { getTracks, onTracksChange, type TrackHandle } from "./registry";
+import { scrollForCam, type PinPlan } from "@/lib/pin";
 import { play } from "@/lib/sfx";
 import { PIPE } from "./WarpPipe";
 import styles from "./Journey.module.css";
@@ -35,6 +36,74 @@ interface MeasuredTrack {
   top: number;
   scale: number;
   window: TrackWindow;
+  /** Inside a pinned (sideways) scene: its screen position moves with the camera. */
+  pinned?: boolean;
+}
+
+/** Where, across the screen, the character runs while a sideways scene's camera follows it. */
+const PIN_FOCUS = 0.5;
+
+/**
+ * Scroll geometry of a track inside an active pinned scene, or null. The
+ * camera offset equals scroll distance past the pin point, so a strip x maps
+ * linearly to a scroll position.
+ */
+function pinGeometry(el: Element) {
+  const scene = el.closest<HTMLElement>("[data-pin-scene]");
+  if (!scene || scene.dataset.pinned !== "true" || !Number(scene.dataset.travel)) return null;
+  const stage = scene.querySelector<HTMLElement>("[data-pin-stage]");
+  const strip = scene.querySelector<HTMLElement>("[data-pin-strip]");
+  if (!stage || !strip) return null;
+  const pinTop = parseFloat(getComputedStyle(stage).top) || 0;
+  let plan: PinPlan;
+  try {
+    plan = JSON.parse(scene.dataset.pinPlan ?? "");
+  } catch {
+    return null;
+  }
+  return {
+    /** scrollY at which the stage pins (camera 0). */
+    pinStart: scene.getBoundingClientRect().top + window.scrollY - pinTop,
+    stripLeft: strip.getBoundingClientRect().left,
+    stageWidth: stage.clientWidth,
+    plan,
+  };
+}
+
+/**
+ * [scroll offset, beat] knots for a track in a pinned scene. The route plays
+ * while the camera carries the track past PIN_FOCUS; during each camera hold
+ * the character stands still — at the take-off spot of the "?" block over
+ * the card on screen, so it bumps the block as the camera moves on.
+ */
+function pinKnots(
+  pin: NonNullable<ReturnType<typeof pinGeometry>>,
+  route: CompiledRoute,
+  layout: TrackLayout,
+  x: number,
+  width: number,
+  scale: number,
+): [number, number][] {
+  const W = pin.stageWidth;
+  const c0 = x - PIN_FOCUS * W;
+  const c1 = x + width - PIN_FOCUS * W;
+  const linear = (cam: number) => ((cam - c0) / (c1 - c0)) * route.total;
+  const knots: [number, number][] = [[scrollForCam(pin.plan, c0), 0]];
+  for (const h of pin.plan.holds) {
+    if (h.at <= x || h.at >= x + width) continue;
+    // The card this hold is for, in the track's art px.
+    const artX = (h.at - x) / scale;
+    const block = (layout.blocks ?? [])
+      .filter((b) => b.kind === "question")
+      .sort((a, b) => Math.abs(a.x + 4 - artX) - Math.abs(b.x + 4 - artX))[0];
+    const jump = block && Math.abs(block.x + 4 - artX) < 80 ? route.segments.find((sg) => sg.step.kind === "jump" && sg.step.bump === block.id) : undefined;
+    const prev = knots[knots.length - 1][1];
+    // Just before take-off: standing, not the first instant of the jump.
+    const beat = Math.max(prev, jump ? jump.b0 - 1e-3 : linear(h.cam));
+    knots.push([h.from, beat], [h.to, beat]);
+  }
+  knots.push([Math.max(scrollForCam(pin.plan, c1), knots[knots.length - 1][0] + 1), route.total]);
+  return knots;
 }
 
 interface GlobalEvent {
@@ -153,6 +222,7 @@ export function JourneyController() {
         const s = handle.scale;
         const docTop = r.top + sy;
         let window: TrackWindow;
+        let pin: ReturnType<typeof pinGeometry> = null;
         if (handle.mode === "follow") {
           // Beats follow the character's feet: it reaches each ledge/branch/floor
           // as that point crosses the target line.
@@ -162,13 +232,20 @@ export function JourneyController() {
             knots.push([t, seg.b1]);
           }
           window = { id: handle.id, start: knots[0][0], end: knots[knots.length - 1][0], total: route.total, knots };
+        } else if ((pin = pinGeometry(handle.el))) {
+          // Sideways scene: the route follows the camera (see pinKnots).
+          const base = pin.pinStart + TARGET * vh;
+          const knots = pinKnots(pin, route, handle.layout, r.left - pin.stripLeft, r.width, s).map(
+            ([sc, b]) => [base + sc, b] as [number, number],
+          );
+          window = { id: handle.id, start: knots[0][0], end: knots[knots.length - 1][0], total: route.total, knots };
         } else {
           const start = docTop - (handle.pre ?? PRE) * vh;
           let end = docTop + r.height + POST * vh;
           if (end > maxT) end = Math.max(start + 0.25 * vh, maxT);
           window = { id: handle.id, start, end, total: route.total };
         }
-        return [{ handle, route, left: r.left - rr.left, top: docTop - rootTop, scale: s, window }];
+        return [{ handle, route, left: r.left - rr.left, top: docTop - rootTop, scale: s, window, pinned: Boolean(pin) }];
       });
 
       // Parallax layers (starfields behind worlds, far silhouettes in bands).
@@ -184,7 +261,7 @@ export function JourneyController() {
 
       // Panels that can react when the character is near.
       anchors = Array.from(root.querySelectorAll<HTMLElement>("[data-anchor]"))
-        .filter((el) => !el.closest("[data-world-node]"))
+        .filter((el) => !el.closest("[data-world-node]") && !el.closest('[data-pin-scene][data-pinned="true"]'))
         .map((el) => {
           const b = el.getBoundingClientRect();
           return {
@@ -390,6 +467,13 @@ export function JourneyController() {
       const { index, local } = locate(map, displayed);
       const tr = tracks[index];
       if (!tr) return;
+      if (tr.pinned) {
+        // The strip moves with scroll: read where the track is right now.
+        const r = tr.handle.el.getBoundingClientRect();
+        const rr = root.getBoundingClientRect();
+        tr.left = r.left - rr.left;
+        tr.top = r.top - rr.top;
+      }
       // Worlds reached so far (including ones passed through by pipe).
       map.tracks.forEach((mt, i) => {
         if (displayed > mt.offset) visited.add(tracks[i].handle.world);
@@ -403,6 +487,10 @@ export function JourneyController() {
       // Catching up: walks become a visible sprint.
       if (!reduce && speed > CHASE.sprintAt && state.frame.startsWith("walk")) {
         state = { ...state, frame: state.frame.replace("walk", "run") as CharacterState["frame"] };
+      }
+      // Stopped mid-walk (scrolling paused, or a camera hold): stand, don't freeze mid-stride.
+      if (!reduce && !warp && Math.abs(target - displayed) < 1e-3 && /^(walk|run)/.test(state.frame)) {
+        state = { ...state, frame: "idle" };
       }
       if (reduce) {
         // Reduced motion: stand still at the track's rest pose while it is on screen.
