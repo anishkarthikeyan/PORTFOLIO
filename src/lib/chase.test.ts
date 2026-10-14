@@ -29,6 +29,14 @@ describe("journey map", () => {
     expect(map.total).toBe(59);
   });
 
+  it("splits overlapping plain windows halfway instead of starving the later one", () => {
+    const m = buildJourneyMap([
+      { id: "band", start: 0, end: 1000, total: 10 },
+      { id: "finale", start: 400, end: 1200, total: 10 },
+    ]);
+    expect(m.tracks.map((t) => [t.start, t.end])).toEqual([[0, 700], [700, 1200]]);
+  });
+
   it("target beat is monotonic in scroll and constant between tracks (inside a pipe)", () => {
     let prev = -1;
     for (let t = 800; t < 3500; t += 13) {

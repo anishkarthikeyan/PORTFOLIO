@@ -552,6 +552,10 @@
   display: grid;
   gap: var(--s-4);
   align-content: start;
+  /* Scroll runway after the last scene: the finale (and the contact band before
+     it) get their full pace and finish before the page bottom, instead of
+     racing through the last few hundred pixels. */
+  padding-bottom: 28svh;
 }
 .finaleStage {
   margin: 0;
@@ -583,9 +587,9 @@
     transform 300ms steps(3),
     visibility 0s 300ms;
 }
-.summary:not([data-open="true"]) {
-  display: none;
-}
+/* Hidden but still taking its space: opening it must not change the page
+   height while the visitor is scrolling to the end (that would re-measure
+   every track and make the character jump). */
 .summary[data-open="true"] {
   opacity: 1;
   visibility: visible;
@@ -1198,6 +1202,8 @@
 }
 .badges {
   margin-top: var(--s-2);
+  /* Room for the badge list from the start, so filling it in doesn't grow the page. */
+  min-height: 3.2em;
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--text);
@@ -1388,13 +1394,19 @@
     transform: scale(1.2);
   }
 }
+/* Credits + high scores: always laid out (so the page height never changes
+   at the end), revealed once the star is touched. */
 .afterStar {
-  display: none;
+  display: grid;
   gap: var(--s-4);
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 300ms steps(3);
 }
 .finale:has([data-journey-summary][data-open="true"]) .afterStar {
-  display: grid;
+  opacity: 1;
+  visibility: visible;
 }
 .credits {
   position: relative;

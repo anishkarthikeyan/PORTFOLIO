@@ -54,19 +54,32 @@ export interface JourneyMap {
   total: number;
 }
 
-/** Orders tracks, removes window overlaps, and assigns global beat offsets. */
+/**
+ * Orders tracks, removes window overlaps, and assigns global beat offsets.
+ * Overlapping neighbours meet halfway, so a track squeezed between another
+ * and the end of the page still gets its share of scroll. Tracks aligned by
+ * knots (ledges, camera holds) keep their own range: the later one starts
+ * where the earlier ends.
+ */
 export function buildJourneyMap(windows: TrackWindow[]): JourneyMap {
   const sorted = [...windows].sort((a, b) => a.start - b.start);
-  let prevEnd = -Infinity;
   let offset = 0;
-  const tracks: MappedTrack[] = sorted.map((w) => {
-    const start = Math.max(w.start, prevEnd);
-    const end = Math.max(start + 1, w.end);
-    prevEnd = end;
-    const t = { ...w, start, end, offset };
+  const tracks: MappedTrack[] = [];
+  for (const w of sorted) {
+    const prev = tracks[tracks.length - 1];
+    let start = w.start;
+    if (prev && start < prev.end) {
+      if (!prev.knots && !w.knots) {
+        const mid = Math.min(Math.max((start + prev.end) / 2, prev.start + 1), Math.max(w.end - 1, prev.start + 1));
+        prev.end = mid;
+        start = mid;
+      } else {
+        start = prev.end;
+      }
+    }
+    tracks.push({ ...w, start, end: Math.max(start + 1, w.end), offset });
     offset += w.total;
-    return t;
-  });
+  }
   return { tracks, total: offset };
 }
 
